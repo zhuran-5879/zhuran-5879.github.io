@@ -138,7 +138,6 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      /* 去掉了模糊效果 */
     }
 
     .card-body {
@@ -406,7 +405,6 @@
     </div>
   </header>
 
-  <!-- 首页列表 -->
   <div id="homePage" class="page active">
     <div class="section-title">🔥 航海王燃烧意志 · 账号商城</div>
     <div class="game-meta">
@@ -415,208 +413,182 @@
     <div class="product-grid" id="productGrid"></div>
   </div>
 
-  <!-- 详情页 -->
   <div id="detailPage" class="page">
     <button class="back-btn" id="backBtn">← 返回商城</button>
     <div class="detail-layout" id="detailContent"></div>
   </div>
 
-  <!-- 右下角卖账号按钮 -->
   <button class="float-sell-btn" id="sellBtn">💰 卖账号</button>
+  <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
 
-  <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.top · 客服微信：csy212886226</div>
-
-  <!-- 引入商品数据文件 -->
-  <script src="products.js"></script>
   <script>
-    (function() {
-      // 检查 products 变量是否存在
-      if (typeof products === 'undefined') {
-        window.products = [];
-        console.warn('products.js 未加载或数据为空，请上传 products.js 文件');
+    // =================== Airtable 凭证（已填好）===================
+    const AIRTABLE_CONFIG = {
+      baseId: 'appHghJgUFfWnqFaIU',
+      tableName: '游戏账号',
+      token: '___AIRTABLE_TOKEN___',
+      view: 'Grid view'
+    };
+    // =================================================================
+
+    const encodedTable = encodeURIComponent(AIRTABLE_CONFIG.tableName);
+    const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}?view=${encodeURIComponent(AIRTABLE_CONFIG.view)}`;
+
+    let products = [];
+
+    async function loadProducts() {
+      try {
+        const res = await fetch(API_URL, {
+          headers: {
+            'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`
+          }
+        });
+        if (!res.ok) throw new Error('网络错误');
+        const data = await res.json();
+        products = data.records.map(record => {
+          const fields = record.fields;
+          const mainImg = (fields['主图'] && fields['主图'][0]) ? fields['主图'][0].url : 'https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片';
+          const otherImgs = (fields['其他图片'] || []).map(img => img.url);
+          return {
+            id: fields['编号'] || '无编号',
+            title: fields['标题'] || '无标题',
+            desc: fields['描述'] || '',
+            price: fields['价格'] || 0,
+            server: fields['区服'] || '未知区服',
+            images: [mainImg, ...otherImgs]
+          };
+        });
+        renderHome();
+        if (window.location.hash) handleHashChange();
+        else window.location.hash = '#/';
+      } catch (err) {
+        console.error(err);
+        document.getElementById('productGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">数据加载失败，请稍后重试</div>';
       }
+    }
 
-      let currentRoute = 'home';
-      let currentProductId = null;
+    const homePage = document.getElementById('homePage');
+    const detailPage = document.getElementById('detailPage');
+    const productGrid = document.getElementById('productGrid');
+    const totalCountSpan = document.getElementById('totalCount');
+    const searchInput = document.getElementById('searchInput');
+    const detailContent = document.getElementById('detailContent');
+    const backBtn = document.getElementById('backBtn');
+    const sellBtn = document.getElementById('sellBtn');
 
-      const homePage = document.getElementById('homePage');
-      const detailPage = document.getElementById('detailPage');
-      const productGrid = document.getElementById('productGrid');
-      const totalCountSpan = document.getElementById('totalCount');
-      const searchInput = document.getElementById('searchInput');
-      const detailContent = document.getElementById('detailContent');
-      const backBtn = document.getElementById('backBtn');
-      const sellBtn = document.getElementById('sellBtn');
+    sellBtn.addEventListener('click', () => alert('请联系客服微信：csy212886226 办理卖账号业务'));
 
-      // 卖账号按钮点击弹窗
-      sellBtn.addEventListener('click', () => {
-        alert('请联系客服微信：csy212886226 办理卖账号业务');
+    function truncate(str, len = 30) {
+      if (!str) return '';
+      return str.length > len ? str.slice(0, len) + '...' : str;
+    }
+
+    let currentRoute = 'home', currentProductId = null;
+
+    function renderHome(filterText = '') {
+      const keyword = filterText.trim().toLowerCase();
+      const filtered = products.filter(p => {
+        if (!keyword) return true;
+        return p.id.toLowerCase().includes(keyword) || p.title.toLowerCase().includes(keyword) || p.desc.toLowerCase().includes(keyword) || (p.server||'').toLowerCase().includes(keyword);
       });
-
-      // 工具函数：截取前30字
-      function truncate(str, len = 30) {
-        if (!str) return '';
-        return str.length > len ? str.slice(0, len) + '...' : str;
+      totalCountSpan.textContent = filtered.length;
+      if (filtered.length === 0) {
+        productGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">没有找到匹配的账号</div>';
+        return;
       }
-
-      // 渲染首页
-      function renderHome(filterText = '') {
-        const keyword = filterText.trim().toLowerCase();
-        const filtered = products.filter(p => {
-          if (!keyword) return true;
-          return (
-            p.id.toLowerCase().includes(keyword) ||
-            p.title.toLowerCase().includes(keyword) ||
-            p.desc.toLowerCase().includes(keyword) ||
-            (p.server || '').toLowerCase().includes(keyword)
-          );
-        });
-
-        totalCountSpan.textContent = filtered.length;
-
-        if (filtered.length === 0) {
-          productGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">没有找到匹配的账号</div>`;
-          return;
-        }
-
-        productGrid.innerHTML = filtered.map(p => {
-          const shortDesc = truncate(p.desc, 30);
-          return `
-            <div class="product-card" data-product-id="${p.id}">
-              <div class="card-img">
-                <img src="${p.images[0]}" alt="${p.id}" loading="lazy">
-              </div>
-              <div class="card-body">
-                <div class="product-id">📌 ${p.id}</div>
-                <div class="product-title">${truncate(p.title, 30)}</div>
-                <div class="product-desc">${shortDesc}</div>
-                <div class="product-server">🌐 ${p.server || '未知区服'}</div>
-                <div class="product-footer">
-                  <span class="price">¥${p.price}</span>
-                  <button class="btn-sm">查看详情</button>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
-
-        document.querySelectorAll('.product-card').forEach(card => {
-          card.addEventListener('click', () => {
-            navigateToDetail(card.dataset.productId);
-          });
-        });
-      }
-
-      // 渲染详情页
-      function renderDetail(productId) {
-        const product = products.find(p => p.id === productId);
-        if (!product) {
-          navigateToHome();
-          return;
-        }
-
-        currentProductId = productId;
-        const mainImg = product.images[0];
-        const thumbs = product.images.map((img, idx) => `
-          <img src="${img}" class="thumb ${idx === 0 ? 'active' : ''}" data-index="${idx}" alt="缩略图${idx+1}">
-        `).join('');
-
-        const metaHtml = `
-          <div class="meta-item"><div class="label">商品编号</div><div class="value">${product.id}</div></div>
-          <div class="meta-item"><div class="label">所在区服</div><div class="value">${product.server}</div></div>
-        `;
-
-        detailContent.innerHTML = `
-          <div class="detail-gallery">
-            <img src="${mainImg}" class="main-img" id="mainImg" alt="${product.id}">
-            <div class="thumb-list" id="thumbList">${thumbs}</div>
-          </div>
-          <div class="detail-info">
-            <h1>${truncate(product.title, 30)}</h1>
-            <div class="detail-price">¥${product.price}</div>
-            <div class="detail-desc">${product.desc}</div>
-            <div class="detail-meta">${metaHtml}</div>
-            <button class="buy-btn" id="buyBtn">💬 联系客服购买</button>
-            <div class="contact-row">
-              <span>📱 客服微信：csy212886226</span>
+      productGrid.innerHTML = filtered.map(p => `
+        <div class="product-card" data-product-id="${p.id}">
+          <div class="card-img"><img src="${p.images[0]}" alt="${p.id}"></div>
+          <div class="card-body">
+            <div class="product-id">📌 ${p.id}</div>
+            <div class="product-title">${truncate(p.title, 30)}</div>
+            <div class="product-desc">${truncate(p.desc, 30)}</div>
+            <div class="product-server">🌐 ${p.server}</div>
+            <div class="product-footer">
+              <span class="price">¥${p.price}</span>
+              <button class="btn-sm">查看详情</button>
             </div>
           </div>
-        `;
+        </div>
+      `).join('');
+      document.querySelectorAll('.product-card').forEach(card => card.addEventListener('click', () => navigateToDetail(card.dataset.productId)));
+    }
 
-        document.querySelectorAll('#thumbList .thumb').forEach(thumb => {
-          thumb.addEventListener('click', function() {
-            document.getElementById('mainImg').src = product.images[this.dataset.index];
-            document.querySelectorAll('#thumbList .thumb').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-          });
+    function renderDetail(productId) {
+      const product = products.find(p => p.id === productId);
+      if (!product) { navigateToHome(); return; }
+      currentProductId = productId;
+      const mainImg = product.images[0];
+      const thumbs = product.images.map((img, idx) => `<img src="${img}" class="thumb ${idx===0?'active':''}" data-index="${idx}" alt="缩略图">`).join('');
+      const metaHtml = `
+        <div class="meta-item"><div class="label">商品编号</div><div class="value">${product.id}</div></div>
+        <div class="meta-item"><div class="label">所在区服</div><div class="value">${product.server}</div></div>
+      `;
+      detailContent.innerHTML = `
+        <div class="detail-gallery">
+          <img src="${mainImg}" class="main-img" id="mainImg" alt="${product.id}">
+          <div class="thumb-list" id="thumbList">${thumbs}</div>
+        </div>
+        <div class="detail-info">
+          <h1>${truncate(product.title, 30)}</h1>
+          <div class="detail-price">¥${product.price}</div>
+          <div class="detail-desc">${product.desc}</div>
+          <div class="detail-meta">${metaHtml}</div>
+          <button class="buy-btn" id="buyBtn">💬 联系客服购买</button>
+          <div class="contact-row"><span>📱 客服微信：csy212886226</span></div>
+        </div>
+      `;
+      document.querySelectorAll('#thumbList .thumb').forEach(thumb => {
+        thumb.addEventListener('click', function() {
+          document.getElementById('mainImg').src = product.images[this.dataset.index];
+          document.querySelectorAll('#thumbList .thumb').forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
         });
-
-        document.getElementById('buyBtn').addEventListener('click', () => {
-          alert('请联系客服微信：csy212886226 完成购买');
-        });
-      }
-
-      function navigateToHome() {
-        currentRoute = 'home';
-        currentProductId = null;
-        homePage.classList.add('active');
-        detailPage.classList.remove('active');
-        window.location.hash = '#/';
-        renderHome(searchInput.value);
-      }
-
-      function navigateToDetail(productId) {
-        currentRoute = 'detail';
-        currentProductId = productId;
-        homePage.classList.remove('active');
-        detailPage.classList.add('active');
-        window.location.hash = `#/detail/${productId}`;
-        renderDetail(productId);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-
-      searchInput.addEventListener('input', (e) => {
-        if (currentRoute === 'home') renderHome(e.target.value);
       });
+      document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
+    }
 
-      backBtn.addEventListener('click', navigateToHome);
+    function navigateToHome() {
+      currentRoute = 'home'; currentProductId = null;
+      homePage.classList.add('active'); detailPage.classList.remove('active');
+      window.location.hash = '#/';
+      renderHome(searchInput.value);
+    }
 
-      function handleHashChange() {
-        const hash = window.location.hash;
-        const detailMatch = hash.match(/^#\/detail\/(.+)/);
-        if (detailMatch) {
-          const pid = detailMatch[1];
-          if (products.some(p => p.id === pid)) {
-            if (currentRoute !== 'detail' || currentProductId !== pid) {
-              homePage.classList.remove('active');
-              detailPage.classList.add('active');
-              renderDetail(pid);
-              currentRoute = 'detail';
-              currentProductId = pid;
-            }
-          } else {
-            navigateToHome();
+    function navigateToDetail(productId) {
+      currentRoute = 'detail'; currentProductId = productId;
+      homePage.classList.remove('active'); detailPage.classList.add('active');
+      window.location.hash = `#/detail/${productId}`;
+      renderDetail(productId);
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
+
+    searchInput.addEventListener('input', e => { if (currentRoute === 'home') renderHome(e.target.value); });
+    backBtn.addEventListener('click', navigateToHome);
+
+    function handleHashChange() {
+      const hash = window.location.hash;
+      const match = hash.match(/^#\/detail\/(.+)/);
+      if (match) {
+        const pid = match[1];
+        if (products.some(p => p.id === pid)) {
+          if (currentRoute !== 'detail' || currentProductId !== pid) {
+            homePage.classList.remove('active'); detailPage.classList.add('active');
+            renderDetail(pid);
+            currentRoute = 'detail'; currentProductId = pid;
           }
-        } else {
-          if (currentRoute !== 'home') {
-            homePage.classList.add('active');
-            detailPage.classList.remove('active');
-            renderHome(searchInput.value);
-            currentRoute = 'home';
-            currentProductId = null;
-          }
-        }
-      }
-
-      window.addEventListener('hashchange', handleHashChange);
-
-      renderHome();
-      if (window.location.hash) {
-        handleHashChange();
+        } else navigateToHome();
       } else {
-        window.location.hash = '#/';
+        if (currentRoute !== 'home') {
+          homePage.classList.add('active'); detailPage.classList.remove('active');
+          renderHome(searchInput.value);
+          currentRoute = 'home'; currentProductId = null;
+        }
       }
-    })();
+    }
+    window.addEventListener('hashchange', handleHashChange);
+
+    loadProducts();
   </script>
 </body>
 </html>
