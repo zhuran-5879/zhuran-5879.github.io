@@ -42,6 +42,15 @@
     .detail-info { flex:1 1 300px; }
     .detail-info h1 { font-size:1.8rem; margin-bottom:12px; }
     .detail-price { font-size:2.2rem; font-weight:800; color:#f87171; margin-bottom:20px; }
+    .bid-section { background:#1a1f2b; border-radius:16px; padding:20px; margin:20px 0; }
+    .bid-current { font-size:1.3rem; font-weight:700; color:#f0c060; margin-bottom:12px; }
+    .bid-current span { color:#e8edf2; }
+    .bid-form { display:flex; gap:10px; align-items:center; }
+    .bid-form input { flex:1; background:#0c0f15; border:1px solid #2e3540; color:#e8edf2; padding:10px 16px; border-radius:30px; font-size:1rem; outline:none; }
+    .bid-form input:focus { border-color:#d4942b; }
+    .bid-form button { background:linear-gradient(135deg, #d4942b, #b5761e); border:none; color:#0c0f15; font-weight:800; padding:10px 24px; border-radius:30px; cursor:pointer; font-size:1rem; transition:opacity 0.2s; }
+    .bid-form button:hover { opacity:0.9; }
+    .bid-error { color:#f87171; font-size:0.9rem; margin-top:8px; display:none; }
     .detail-desc { color:#b0b8c5; margin-bottom:24px; line-height:1.7; word-break:break-word; }
     .detail-meta { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:28px; }
     .meta-item { background:#161b22; padding:10px 12px; border-radius:12px; }
@@ -64,10 +73,12 @@
   <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
 
   <script>
+    // ================= 配置（替换成你的读写 Token）=================
     const AIRTABLE_CONFIG = {
       baseId: 'appHghJgUFfWnqFaU',
       tableName: 'products',
-      token: 'pat5Ac7uygjMk1GpB.a3aeaa5fc53f98cea789935b0cf24a93a8c11276b401e2a0b6485c1abfc98b16',
+      // 🔁 把这里换成你刚刚创建的、有读写权限的新 Token
+      token: '你的新读写Token',
     };
     const encodedTable = encodeURIComponent(AIRTABLE_CONFIG.tableName);
     const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
@@ -87,10 +98,12 @@
           const otherImgs = (f['其他图片'] || []).map(img => img.url);
           return {
             id: f['编号'] || '无编号',
+            recordId: record.id,
             title: f['标题'] || '无标题',
             desc: f['描述'] || '',
             price: f['价格'] || 0,
             server: f['区服'] || '未知区服',
+            highestBid: f['最高出价'] || 0,
             images: [mainImg, ...otherImgs]
           };
         });
@@ -142,17 +155,30 @@
       const images = p.images || [];
       const mainImg = images[0] || 'https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片';
       const thumbs = images.map((img,i) => `<img src="${img}" class="thumb ${i===0?'active':''}" data-index="${i}" alt="缩略图">`).join('');
+      const currentBid = p.highestBid || 0;
+      const bidDisplay = currentBid > 0 ? `¥${currentBid}` : '暂无出价';
+
       detailContent.innerHTML = `
-        <div class="detail-gallery"><img src="${mainImg}" class="main-img" id="mainImg"><div class="thumb-list" id="thumbList">${thumbs}</div></div>
+        <div class="detail-gallery"><img src="${mainImg}" class="main-img" id="mainImg"><div class="thumb-list">${thumbs}</div></div>
         <div class="detail-info">
-          <h1>${truncate(p.title)}</h1><div class="detail-price">¥${p.price}</div>
+          <h1>${truncate(p.title)}</h1>
+          <div class="detail-price">¥${p.price}</div>
+          <div class="bid-section">
+            <div class="bid-current">当前最高出价：<span id="currentBid">${bidDisplay}</span></div>
+            <div class="bid-form">
+              <input type="number" id="bidInput" placeholder="输入你的出价" min="1" step="0.01">
+              <button id="submitBidBtn">我要出价</button>
+            </div>
+            <div class="bid-error" id="bidError"></div>
+          </div>
           <div class="detail-desc">${p.desc}</div>
           <div class="detail-meta"><div class="meta-item"><div class="label">商品编号</div><div class="value">${p.id}</div></div><div class="meta-item"><div class="label">所在区服</div><div class="value">${p.server}</div></div></div>
           <button class="buy-btn" id="buyBtn">💬 联系客服购买</button>
           <div class="contact-row"><span>📱 客服微信：csy212886226</span></div>
         </div>
       `;
-      // 缩略图切换逻辑
+
+      // 缩略图切换
       document.querySelectorAll('#thumbList .thumb').forEach(thumb => {
         thumb.addEventListener('click', function() {
           const index = parseInt(this.dataset.index, 10);
@@ -163,7 +189,68 @@
           }
         });
       });
+
       document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
+
+      // 出价逻辑
+      const bidInput = document.getElementById('bidInput');
+      const submitBtn = document.getElementById('submitBidBtn');
+      const errorEl = document.getElementById('bidError');
+      const currentBidSpan = document.getElementById('currentBid');
+
+      submitBtn.addEventListener('click', async () => {
+        const bidValue = parseFloat(bidInput.value);
+        if (isNaN(bidValue) || bidValue <= 0) {
+          errorEl.textContent = '请输入有效的出价金额';
+          errorEl.style.display = 'block';
+          return;
+        }
+        if (bidValue <= currentBid) {
+          errorEl.textContent = '出价必须高于当前最高出价';
+          errorEl.style.display = 'block';
+          return;
+        }
+        if (bidValue > p.price) {
+          errorEl.textContent = `出价不能超过商品标价 ¥${p.price}`;
+          errorEl.style.display = 'block';
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = '提交中...';
+        errorEl.style.display = 'none';
+
+        try {
+          const patchUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}/${p.recordId}`;
+          const res = await fetch(patchUrl, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              fields: {
+                '最高出价': bidValue
+              }
+            })
+          });
+
+          if (!res.ok) throw new Error('出价失败');
+
+          // 更新本地状态
+          p.highestBid = bidValue;
+          currentBidSpan.textContent = `¥${bidValue}`;
+          bidInput.value = '';
+          alert('出价成功！');
+        } catch (err) {
+          console.error(err);
+          errorEl.textContent = '出价失败，请稍后重试';
+          errorEl.style.display = 'block';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '我要出价';
+        }
+      });
     }
 
     function navigateToHome() { currentRoute='home'; currentProductId=null; homePage.classList.add('active'); detailPage.classList.remove('active'); window.location.hash='#/'; renderHome(searchInput.value); }
