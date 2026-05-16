@@ -64,7 +64,6 @@
   <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
 
   <script>
-    // ================= 只读 Token（已确认可用）==================
     const AIRTABLE_CONFIG = {
       baseId: 'appHghJgUFfWnqFaU',
       tableName: 'products',
@@ -144,7 +143,7 @@
       const mainImg = images[0] || 'https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片';
       const thumbs = images.map((img,i) => `<img src="${img}" class="thumb ${i===0?'active':''}" data-index="${i}" alt="缩略图">`).join('');
       detailContent.innerHTML = `
-        <div class="detail-gallery"><img src="${mainImg}" class="main-img" id="mainImg"><div class="thumb-list">${thumbs}</div></div>
+        <div class="detail-gallery"><img src="${mainImg}" class="main-img" id="mainImg"><div class="thumb-list" id="thumbList">${thumbs}</div></div>
         <div class="detail-info">
           <h1>${truncate(p.title)}</h1><div class="detail-price">¥${p.price}</div>
           <div class="detail-desc">${p.desc}</div>
@@ -153,11 +152,17 @@
           <div class="contact-row"><span>📱 客服微信：csy212886226</span></div>
         </div>
       `;
-      document.querySelectorAll('#thumbList .thumb').forEach(t => t.addEventListener('click', function() {
-        document.getElementById('mainImg').src = images[this.dataset.index];
-        document.querySelectorAll('#thumbList .thumb').forEach(x => x.classList.remove('active'));
-        this.classList.add('active');
-      }));
+      // 缩略图切换逻辑
+      document.querySelectorAll('#thumbList .thumb').forEach(thumb => {
+        thumb.addEventListener('click', function() {
+          const index = parseInt(this.dataset.index, 10);
+          if (images[index]) {
+            document.getElementById('mainImg').src = images[index];
+            document.querySelectorAll('#thumbList .thumb').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+          }
+        });
+      });
       document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
     }
 
