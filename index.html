@@ -432,7 +432,7 @@
     // =================================================================
 
     const encodedTable = encodeURIComponent(AIRTABLE_CONFIG.tableName);
-    const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}?view=${encodeURIComponent(AIRTABLE_CONFIG.view)}`;
+    const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
 
     let products = [];
 
