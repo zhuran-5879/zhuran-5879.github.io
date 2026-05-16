@@ -73,13 +73,13 @@
   <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
 
   <script>
-    // ================= 配置（替换成你的读写 Token）=================
+    // ================= 配置区域（只改 Token，保留英文单引号）==================
     const AIRTABLE_CONFIG = {
       baseId: 'appHghJgUFfWnqFaU',
       tableName: 'products',
-      // 🔁 把这里换成你刚刚创建的、有读写权限的新 Token
-      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',
+      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',  // 🔁 只修改这里！保留两边的英文单引号
     };
+    // =================================================================
     const encodedTable = encodeURIComponent(AIRTABLE_CONFIG.tableName);
     const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
 
@@ -159,7 +159,7 @@
       const bidDisplay = currentBid > 0 ? `¥${currentBid}` : '暂无出价';
 
       detailContent.innerHTML = `
-        <div class="detail-gallery"><img src="${mainImg}" class="main-img" id="mainImg"><div class="thumb-list">${thumbs}</div></div>
+        <div class="detail-gallery"><img src="${mainImg}" class="main-img" id="mainImg"><div class="thumb-list" id="thumbList">${thumbs}</div></div>
         <div class="detail-info">
           <h1>${truncate(p.title)}</h1>
           <div class="detail-price">¥${p.price}</div>
@@ -178,7 +178,7 @@
         </div>
       `;
 
-      // 缩略图切换
+      // 缩略图切换逻辑（已确认修复）
       document.querySelectorAll('#thumbList .thumb').forEach(thumb => {
         thumb.addEventListener('click', function() {
           const index = parseInt(this.dataset.index, 10);
@@ -228,16 +228,9 @@
               'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              fields: {
-                '最高出价': bidValue
-              }
-            })
+            body: JSON.stringify({ fields: { '最高出价': bidValue } })
           });
-
           if (!res.ok) throw new Error('出价失败');
-
-          // 更新本地状态
           p.highestBid = bidValue;
           currentBidSpan.textContent = `¥${bidValue}`;
           bidInput.value = '';
