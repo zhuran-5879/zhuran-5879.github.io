@@ -5,458 +5,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>竹染游戏账号交易平台</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif;
-      background: #0c0f15;
-      color: #e8edf2;
-      line-height: 1.5;
-      min-height: 100vh;
-    }
-
-    .navbar {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: rgba(18, 22, 28, 0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(200, 160, 80, 0.15);
-      padding: 0 20px;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-
-    .logo {
-      font-size: 1.6rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, #f0c060 0%, #d4942b 80%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: 1px;
-    }
-
-    .search-box {
-      display: flex;
-      align-items: center;
-      background: #1e232b;
-      border: 1px solid #2e3540;
-      border-radius: 40px;
-      padding: 6px 16px;
-      width: 280px;
-      max-width: 50vw;
-      transition: border 0.2s;
-    }
-
-    .search-box:focus-within {
-      border-color: #d4942b;
-    }
-
-    .search-box input {
-      background: transparent;
-      border: none;
-      outline: none;
-      color: #e8edf2;
-      font-size: 0.95rem;
-      width: 100%;
-      margin-left: 6px;
-    }
-
-    .search-box input::placeholder {
-      color: #6b7280;
-    }
-
-    .page {
-      display: none;
-      padding: 24px 20px 40px;
-      max-width: 1300px;
-      margin: 0 auto;
-    }
-
-    .page.active {
-      display: block;
-    }
-
-    .section-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin: 16px 0 24px;
-      padding-left: 8px;
-      border-left: 4px solid #d4942b;
-    }
-
-    .game-meta {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 20px;
-      color: #9aa0b0;
-    }
-
-    .product-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-      gap: 20px;
-    }
-
-    .product-card {
-      background: #161b22;
-      border: 1px solid #252b35;
-      border-radius: 20px;
-      overflow: hidden;
-      cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .product-card:hover {
-      transform: translateY(-4px);
-      border-color: #d4942b;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.5);
-    }
-
-    .card-img {
-      height: 170px;
-      background: #1a1f2b;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card-img img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .card-body {
-      padding: 14px 14px 18px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .product-id {
-      font-size: 0.9rem;
-      color: #f0c060;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
-    .product-title {
-      font-weight: 700;
-      font-size: 1.1rem;
-      margin-bottom: 8px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .product-desc {
-      font-size: 0.85rem;
-      color: #9aa0b0;
-      margin-bottom: 6px;
-      display: -webkit-box;
-      -webkit-line-clamp: 1;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .product-server {
-      font-size: 0.8rem;
-      color: #6b7280;
-      margin-bottom: 10px;
-    }
-
-    .product-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: auto;
-    }
-
-    .price {
-      font-size: 1.35rem;
-      font-weight: 800;
-      color: #f87171;
-    }
-
-    .btn-sm {
-      background: #212833;
-      border: none;
-      color: #e8edf2;
-      padding: 6px 14px;
-      border-radius: 30px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .btn-sm:hover {
-      background: #d4942b;
-      color: #0c0f15;
-    }
-
-    /* 详情页 */
-    .back-btn {
-      background: none;
-      border: 1px solid #2e3540;
-      color: #9aa0b0;
-      padding: 8px 18px;
-      border-radius: 30px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-bottom: 24px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: 0.2s;
-    }
-
-    .back-btn:hover {
-      border-color: #d4942b;
-      color: #f0c060;
-    }
-
-    .detail-layout {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 28px;
-    }
-
-    .detail-gallery {
-      flex: 1 1 380px;
-      background: #161b22;
-      border-radius: 24px;
-      padding: 16px;
-    }
-
-    .main-img {
-      width: 100%;
-      border-radius: 18px;
-      margin-bottom: 12px;
-      aspect-ratio: 16/10;
-      object-fit: cover;
-      background: #1e232b;
-    }
-
-    .thumb-list {
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-    }
-
-    .thumb {
-      width: 70px;
-      height: 50px;
-      border-radius: 10px;
-      object-fit: cover;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: 0.2s;
-    }
-
-    .thumb.active, .thumb:hover {
-      border-color: #d4942b;
-    }
-
-    .detail-info {
-      flex: 1 1 300px;
-    }
-
-    .detail-info h1 {
-      font-size: 1.8rem;
-      margin-bottom: 12px;
-    }
-
-    .detail-price {
-      font-size: 2.2rem;
-      font-weight: 800;
-      color: #f87171;
-      margin-bottom: 20px;
-    }
-
-    .detail-desc {
-      color: #b0b8c5;
-      margin-bottom: 24px;
-      line-height: 1.7;
-      word-break: break-word;
-    }
-
-    .detail-meta {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 28px;
-    }
-
-    .meta-item {
-      background: #161b22;
-      padding: 10px 12px;
-      border-radius: 12px;
-    }
-
-    .meta-item .label {
-      font-size: 0.75rem;
-      color: #6b7280;
-    }
-
-    .meta-item .value {
-      font-weight: 700;
-    }
-
-    .buy-btn {
-      width: 100%;
-      background: linear-gradient(135deg, #d4942b, #b5761e);
-      border: none;
-      color: #0c0f15;
-      font-weight: 800;
-      font-size: 1.2rem;
-      padding: 14px;
-      border-radius: 40px;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-
-    .buy-btn:hover {
-      opacity: 0.9;
-    }
-
-    .contact-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-top: 16px;
-      color: #9aa0b0;
-    }
-
-    /* 右下角悬浮按钮 */
-    .float-sell-btn {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      background: linear-gradient(135deg, #d4942b, #b5761e);
-      color: #0c0f15;
-      font-weight: 800;
-      font-size: 1.1rem;
-      padding: 14px 24px;
-      border-radius: 50px;
-      box-shadow: 0 8px 25px rgba(212, 148, 43, 0.4);
-      cursor: pointer;
-      z-index: 1000;
-      border: none;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .float-sell-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 12px 30px rgba(212, 148, 43, 0.6);
-    }
-
-    .footer {
-      text-align: center;
-      padding: 32px 20px;
-      color: #5a6270;
-      font-size: 0.85rem;
-      border-top: 1px solid #1e2530;
-    }
-
-    @media (max-width: 640px) {
-      .navbar {
-        height: auto;
-        padding: 12px 16px;
-        gap: 8px;
-      }
-      .search-box {
-        width: 100%;
-        max-width: 100%;
-      }
-      .product-grid {
-        grid-template-columns: 1fr;
-      }
-      .float-sell-btn {
-        bottom: 20px;
-        right: 20px;
-        padding: 12px 20px;
-        font-size: 1rem;
-      }
-    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif; background:#0c0f15; color:#e8edf2; min-height:100vh; }
+    .navbar { position:sticky; top:0; z-index:50; background:rgba(18,22,28,0.85); backdrop-filter:blur(12px); border-bottom:1px solid rgba(200,160,80,0.15); padding:0 20px; height:64px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .logo { font-size:1.6rem; font-weight:800; background:linear-gradient(135deg, #f0c060 0%, #d4942b 80%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:1px; }
+    .search-box { display:flex; align-items:center; background:#1e232b; border:1px solid #2e3540; border-radius:40px; padding:6px 16px; width:280px; max-width:50vw; transition:border 0.2s; }
+    .search-box:focus-within { border-color:#d4942b; }
+    .search-box input { background:transparent; border:none; outline:none; color:#e8edf2; font-size:0.95rem; width:100%; margin-left:6px; }
+    .search-box input::placeholder { color:#6b7280; }
+    .page { display:none; padding:24px 20px 40px; max-width:1300px; margin:0 auto; }
+    .page.active { display:block; }
+    .section-title { font-size:1.5rem; font-weight:700; margin:16px 0 24px; padding-left:8px; border-left:4px solid #d4942b; }
+    .game-meta { display:flex; align-items:center; gap:16px; margin-bottom:20px; color:#9aa0b0; }
+    .product-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:20px; }
+    .product-card { background:#161b22; border:1px solid #252b35; border-radius:20px; overflow:hidden; cursor:pointer; transition:transform 0.2s, border-color 0.2s; display:flex; flex-direction:column; }
+    .product-card:hover { transform:translateY(-4px); border-color:#d4942b; }
+    .card-img { height:170px; background:#1a1f2b; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .card-img img { width:100%; height:100%; object-fit:cover; }
+    .card-body { padding:14px; flex:1; display:flex; flex-direction:column; }
+    .product-id { font-size:0.9rem; color:#f0c060; font-weight:700; margin-bottom:6px; }
+    .product-title { font-weight:700; font-size:1.1rem; margin-bottom:8px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .product-desc { font-size:0.85rem; color:#9aa0b0; margin-bottom:6px; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+    .product-server { font-size:0.8rem; color:#6b7280; margin-bottom:10px; }
+    .product-footer { display:flex; justify-content:space-between; align-items:center; margin-top:auto; }
+    .price { font-size:1.35rem; font-weight:800; color:#f87171; }
+    .btn-sm { background:#212833; border:none; color:#e8edf2; padding:6px 14px; border-radius:30px; font-size:0.8rem; font-weight:600; cursor:pointer; transition:background 0.2s; }
+    .btn-sm:hover { background:#d4942b; }
+    .back-btn { background:none; border:1px solid #2e3540; color:#9aa0b0; padding:8px 18px; border-radius:30px; font-weight:600; cursor:pointer; margin-bottom:24px; display:inline-flex; align-items:center; gap:6px; transition:0.2s; }
+    .back-btn:hover { border-color:#d4942b; color:#f0c060; }
+    .detail-layout { display:flex; flex-wrap:wrap; gap:28px; }
+    .detail-gallery { flex:1 1 380px; background:#161b22; border-radius:24px; padding:16px; }
+    .main-img { width:100%; border-radius:18px; margin-bottom:12px; aspect-ratio:16/10; object-fit:cover; background:#1e232b; }
+    .thumb-list { display:flex; gap:10px; overflow-x:auto; }
+    .thumb { width:70px; height:50px; border-radius:10px; object-fit:cover; cursor:pointer; border:2px solid transparent; transition:0.2s; }
+    .thumb.active, .thumb:hover { border-color:#d4942b; }
+    .detail-info { flex:1 1 300px; }
+    .detail-info h1 { font-size:1.8rem; margin-bottom:12px; }
+    .detail-price { font-size:2.2rem; font-weight:800; color:#f87171; margin-bottom:20px; }
+    .detail-desc { color:#b0b8c5; margin-bottom:24px; line-height:1.7; word-break:break-word; }
+    .detail-meta { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:28px; }
+    .meta-item { background:#161b22; padding:10px 12px; border-radius:12px; }
+    .meta-item .label { font-size:0.75rem; color:#6b7280; }
+    .meta-item .value { font-weight:700; }
+    .buy-btn { width:100%; background:linear-gradient(135deg, #d4942b, #b5761e); border:none; color:#0c0f15; font-weight:800; font-size:1.2rem; padding:14px; border-radius:40px; cursor:pointer; transition:opacity 0.2s; }
+    .buy-btn:hover { opacity:0.9; }
+    .contact-row { display:flex; align-items:center; gap:16px; margin-top:16px; color:#9aa0b0; }
+    .float-sell-btn { position:fixed; bottom:30px; right:30px; background:linear-gradient(135deg, #d4942b, #b5761e); color:#0c0f15; font-weight:800; font-size:1.1rem; padding:14px 24px; border-radius:50px; box-shadow:0 8px 25px rgba(212,148,43,0.4); cursor:pointer; z-index:1000; border:none; }
+    .float-sell-btn:hover { transform:scale(1.05); }
+    .footer { text-align:center; padding:32px 20px; color:#5a6270; font-size:0.85rem; border-top:1px solid #1e2530; }
+    @media (max-width:640px) { .navbar { height:auto; padding:12px 16px; gap:8px; } .search-box { width:100%; max-width:100%; } .product-grid { grid-template-columns:1fr; } .float-sell-btn { bottom:20px; right:20px; padding:12px 20px; font-size:1rem; } }
   </style>
 </head>
 <body>
-  <header class="navbar">
-    <div class="logo">⚡ 竹染游戏账号交易平台</div>
-    <div class="search-box">
-      <span style="font-size:1.1rem;">🔍</span>
-      <input type="text" id="searchInput" placeholder="搜索商品编号/信息……" autocomplete="off">
-    </div>
-  </header>
-
-  <div id="homePage" class="page active">
-    <div class="section-title">🔥 航海王燃烧意志 · 账号商城</div>
-    <div class="game-meta">
-      <span class="game-icon">🎮</span> 当前展示 <strong>航海王燃烧意志</strong> 账号 · 共 <span id="totalCount">0</span> 个在售
-    </div>
-    <div class="product-grid" id="productGrid"></div>
-  </div>
-
-  <div id="detailPage" class="page">
-    <button class="back-btn" id="backBtn">← 返回商城</button>
-    <div class="detail-layout" id="detailContent"></div>
-  </div>
-
+  <header class="navbar"><div class="logo">⚡ 竹染游戏账号交易平台</div><div class="search-box"><span>🔍</span><input type="text" id="searchInput" placeholder="搜索商品编号/信息……" autocomplete="off"></div></header>
+  <div id="homePage" class="page active"><div class="section-title">🔥 航海王燃烧意志 · 账号商城</div><div class="game-meta"><span>🎮</span> 当前展示 <strong>航海王燃烧意志</strong> 账号 · 共 <span id="totalCount">0</span> 个在售</div><div class="product-grid" id="productGrid"></div></div>
+  <div id="detailPage" class="page"><button class="back-btn" id="backBtn">← 返回商城</button><div class="detail-layout" id="detailContent"></div></div>
   <button class="float-sell-btn" id="sellBtn">💰 卖账号</button>
   <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
 
   <script>
-    // =================== Airtable 凭证（已填好）===================
-   const AIRTABLE_CONFIG = {
-  baseId: 'appHghJgUFfWnqFaIU',
-  tableName: "products",
-  token: 'pat5Ac7uygjMk1GpB.a3aeaa5fc53f98cea789935b0cf24a93a8c11276b401e2a0b6485c1abfc98b16', // 注意：Bearer后面的完整Token
-  view: 'Grid view'
-};
-    // =================================================================
-
+    const AIRTABLE_CONFIG = {
+      baseId: 'appHghJgUFfWnqFaIU',
+      tableName: 'products',
+      token: 'pat5Ac7uygjMk1GpB.a3aeaa5fc53f98cea789935b0cf24a93a8c11276b401e2a0b6485c1abfc98b16'
+    };
     const encodedTable = encodeURIComponent(AIRTABLE_CONFIG.tableName);
-    const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
+    const AIRTABLE_API = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
+    // 通过 CORS 代理请求，绕过浏览器限制
+    const API_URL = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(AIRTABLE_API);
 
     let products = [];
 
     async function loadProducts() {
       try {
-        const res = await fetch(API_URL, {
-          headers: {
-            'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`
-          }
-        });
+        const res = await fetch(API_URL);
         if (!res.ok) throw new Error('网络错误');
         const data = await res.json();
         products = data.records.map(record => {
-          const fields = record.fields;
-          const mainImg = (fields['主图'] && fields['主图'][0]) ? fields['主图'][0].url : 'https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片';
-          const otherImgs = (fields['其他图片'] || []).map(img => img.url);
-          return {
-            id: fields['编号'] || '无编号',
-            title: fields['标题'] || '无标题',
-            desc: fields['描述'] || '',
-            price: fields['价格'] || 0,
-            server: fields['区服'] || '未知区服',
-            images: [mainImg, ...otherImgs]
-          };
+          const f = record.fields;
+          const mainImg = (f['主图'] && f['主图'][0]) ? f['主图'][0].url : 'https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片';
+          const otherImgs = (f['其他图片'] || []).map(img => img.url);
+          return { id: f['编号'] || '无编号', title: f['标题'] || '无标题', desc: f['描述'] || '', price: f['价格'] || 0, server: f['区服'] || '未知区服', images: [mainImg, ...otherImgs] };
         });
         renderHome();
         if (window.location.hash) handleHashChange();
@@ -474,122 +103,64 @@
     const searchInput = document.getElementById('searchInput');
     const detailContent = document.getElementById('detailContent');
     const backBtn = document.getElementById('backBtn');
-    const sellBtn = document.getElementById('sellBtn');
+    document.getElementById('sellBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 办理卖账号业务'));
 
-    sellBtn.addEventListener('click', () => alert('请联系客服微信：csy212886226 办理卖账号业务'));
-
-    function truncate(str, len = 30) {
-      if (!str) return '';
-      return str.length > len ? str.slice(0, len) + '...' : str;
-    }
-
+    function truncate(str, len=30) { return str && str.length > len ? str.slice(0,len)+'...' : str||''; }
     let currentRoute = 'home', currentProductId = null;
 
-    function renderHome(filterText = '') {
-      const keyword = filterText.trim().toLowerCase();
-      const filtered = products.filter(p => {
-        if (!keyword) return true;
-        return p.id.toLowerCase().includes(keyword) || p.title.toLowerCase().includes(keyword) || p.desc.toLowerCase().includes(keyword) || (p.server||'').toLowerCase().includes(keyword);
-      });
+    function renderHome(filterText='') {
+      const kw = filterText.trim().toLowerCase();
+      const filtered = products.filter(p => !kw || p.id.toLowerCase().includes(kw) || p.title.toLowerCase().includes(kw) || p.desc.toLowerCase().includes(kw) || (p.server||'').toLowerCase().includes(kw));
       totalCountSpan.textContent = filtered.length;
-      if (filtered.length === 0) {
-        productGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">没有找到匹配的账号</div>';
-        return;
-      }
+      if (!filtered.length) { productGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">没有找到匹配的账号</div>'; return; }
       productGrid.innerHTML = filtered.map(p => `
         <div class="product-card" data-product-id="${p.id}">
           <div class="card-img"><img src="${p.images[0]}" alt="${p.id}"></div>
           <div class="card-body">
             <div class="product-id">📌 ${p.id}</div>
-            <div class="product-title">${truncate(p.title, 30)}</div>
-            <div class="product-desc">${truncate(p.desc, 30)}</div>
+            <div class="product-title">${truncate(p.title)}</div>
+            <div class="product-desc">${truncate(p.desc)}</div>
             <div class="product-server">🌐 ${p.server}</div>
-            <div class="product-footer">
-              <span class="price">¥${p.price}</span>
-              <button class="btn-sm">查看详情</button>
-            </div>
+            <div class="product-footer"><span class="price">¥${p.price}</span><button class="btn-sm">查看详情</button></div>
           </div>
         </div>
       `).join('');
-      document.querySelectorAll('.product-card').forEach(card => card.addEventListener('click', () => navigateToDetail(card.dataset.productId)));
+      document.querySelectorAll('.product-card').forEach(c => c.addEventListener('click', () => navigateToDetail(c.dataset.productId)));
     }
 
-    function renderDetail(productId) {
-      const product = products.find(p => p.id === productId);
-      if (!product) { navigateToHome(); return; }
-      currentProductId = productId;
-      const mainImg = product.images[0];
-      const thumbs = product.images.map((img, idx) => `<img src="${img}" class="thumb ${idx===0?'active':''}" data-index="${idx}" alt="缩略图">`).join('');
-      const metaHtml = `
-        <div class="meta-item"><div class="label">商品编号</div><div class="value">${product.id}</div></div>
-        <div class="meta-item"><div class="label">所在区服</div><div class="value">${product.server}</div></div>
-      `;
+    function renderDetail(pid) {
+      const p = products.find(x => x.id === pid);
+      if (!p) { navigateToHome(); return; }
+      currentProductId = pid;
+      const thumbs = p.images.map((img,i) => `<img src="${img}" class="thumb ${i===0?'active':''}" data-index="${i}">`).join('');
       detailContent.innerHTML = `
-        <div class="detail-gallery">
-          <img src="${mainImg}" class="main-img" id="mainImg" alt="${product.id}">
-          <div class="thumb-list" id="thumbList">${thumbs}</div>
-        </div>
+        <div class="detail-gallery"><img src="${p.images[0]}" class="main-img" id="mainImg"><div class="thumb-list">${thumbs}</div></div>
         <div class="detail-info">
-          <h1>${truncate(product.title, 30)}</h1>
-          <div class="detail-price">¥${product.price}</div>
-          <div class="detail-desc">${product.desc}</div>
-          <div class="detail-meta">${metaHtml}</div>
+          <h1>${truncate(p.title)}</h1><div class="detail-price">¥${p.price}</div><div class="detail-desc">${p.desc}</div>
+          <div class="detail-meta"><div class="meta-item"><div class="label">商品编号</div><div class="value">${p.id}</div></div><div class="meta-item"><div class="label">所在区服</div><div class="value">${p.server}</div></div></div>
           <button class="buy-btn" id="buyBtn">💬 联系客服购买</button>
           <div class="contact-row"><span>📱 客服微信：csy212886226</span></div>
         </div>
       `;
-      document.querySelectorAll('#thumbList .thumb').forEach(thumb => {
-        thumb.addEventListener('click', function() {
-          document.getElementById('mainImg').src = product.images[this.dataset.index];
-          document.querySelectorAll('#thumbList .thumb').forEach(t => t.classList.remove('active'));
-          this.classList.add('active');
-        });
-      });
+      document.querySelectorAll('#thumbList .thumb').forEach(t => t.addEventListener('click', function() {
+        document.getElementById('mainImg').src = p.images[this.dataset.index];
+        document.querySelectorAll('#thumbList .thumb').forEach(x => x.classList.remove('active'));
+        this.classList.add('active');
+      }));
       document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
     }
 
-    function navigateToHome() {
-      currentRoute = 'home'; currentProductId = null;
-      homePage.classList.add('active'); detailPage.classList.remove('active');
-      window.location.hash = '#/';
-      renderHome(searchInput.value);
-    }
-
-    function navigateToDetail(productId) {
-      currentRoute = 'detail'; currentProductId = productId;
-      homePage.classList.remove('active'); detailPage.classList.add('active');
-      window.location.hash = `#/detail/${productId}`;
-      renderDetail(productId);
-      window.scrollTo({ top:0, behavior:'smooth' });
-    }
-
-    searchInput.addEventListener('input', e => { if (currentRoute === 'home') renderHome(e.target.value); });
+    function navigateToHome() { currentRoute='home'; currentProductId=null; homePage.classList.add('active'); detailPage.classList.remove('active'); window.location.hash='#/'; renderHome(searchInput.value); }
+    function navigateToDetail(pid) { currentRoute='detail'; currentProductId=pid; homePage.classList.remove('active'); detailPage.classList.add('active'); window.location.hash=`#/detail/${pid}`; renderDetail(pid); window.scrollTo({top:0,behavior:'smooth'}); }
+    searchInput.addEventListener('input', e => { if (currentRoute==='home') renderHome(e.target.value); });
     backBtn.addEventListener('click', navigateToHome);
-
     function handleHashChange() {
-      const hash = window.location.hash;
-      const match = hash.match(/^#\/detail\/(.+)/);
-      if (match) {
-        const pid = match[1];
-        if (products.some(p => p.id === pid)) {
-          if (currentRoute !== 'detail' || currentProductId !== pid) {
-            homePage.classList.remove('active'); detailPage.classList.add('active');
-            renderDetail(pid);
-            currentRoute = 'detail'; currentProductId = pid;
-          }
-        } else navigateToHome();
-      } else {
-        if (currentRoute !== 'home') {
-          homePage.classList.add('active'); detailPage.classList.remove('active');
-          renderHome(searchInput.value);
-          currentRoute = 'home'; currentProductId = null;
-        }
-      }
+      const m = window.location.hash.match(/^#\/detail\/(.+)/);
+      if (m) { const pid=m[1]; if (products.some(p => p.id===pid)) { if (currentRoute!=='detail'||currentProductId!==pid) { homePage.classList.remove('active'); detailPage.classList.add('active'); renderDetail(pid); currentRoute='detail'; currentProductId=pid; } } else navigateToHome(); }
+      else { if (currentRoute!=='home') { homePage.classList.add('active'); detailPage.classList.remove('active'); renderHome(searchInput.value); currentRoute='home'; currentProductId=null; } }
     }
     window.addEventListener('hashchange', handleHashChange);
-
     loadProducts();
   </script>
 </body>
 </html>
- 
