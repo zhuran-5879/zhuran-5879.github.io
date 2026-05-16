@@ -19,4 +19,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./
-          publish_branch: gh-pages  # 如果你的 Pages 部署分支是 main，请改为 main
+          publish_branch: main  # 如果你的 Pages 部署分支是 main，请改为 main
