@@ -64,28 +64,38 @@
   <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
 
   <script>
+    // ================= 已修正 Base ID ==================
     const AIRTABLE_CONFIG = {
-      baseId: 'appHghJgUFfWnqFaIU',
+      baseId: 'appHghJgUFfWnqFaU',   // 注意最后是 FaU，不是 FaIU
       tableName: 'products',
       token: 'pat5Ac7uygjMk1GpB.a3aeaa5fc53f98cea789935b0cf24a93a8c11276b401e2a0b6485c1abfc98b16'
     };
+    // ==================================================
     const encodedTable = encodeURIComponent(AIRTABLE_CONFIG.tableName);
-    const AIRTABLE_API = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
-    // 通过 CORS 代理请求，绕过浏览器限制
-    const API_URL = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(AIRTABLE_API);
+    // 直接使用 Airtable API（无 view 参数，无代理）
+    const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
 
     let products = [];
 
     async function loadProducts() {
       try {
-        const res = await fetch(API_URL);
+        const res = await fetch(API_URL, {
+          headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` }
+        });
         if (!res.ok) throw new Error('网络错误');
         const data = await res.json();
         products = data.records.map(record => {
           const f = record.fields;
           const mainImg = (f['主图'] && f['主图'][0]) ? f['主图'][0].url : 'https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片';
           const otherImgs = (f['其他图片'] || []).map(img => img.url);
-          return { id: f['编号'] || '无编号', title: f['标题'] || '无标题', desc: f['描述'] || '', price: f['价格'] || 0, server: f['区服'] || '未知区服', images: [mainImg, ...otherImgs] };
+          return {
+            id: f['编号'] || '无编号',
+            title: f['标题'] || '无标题',
+            desc: f['描述'] || '',
+            price: f['价格'] || 0,
+            server: f['区服'] || '未知区服',
+            images: [mainImg, ...otherImgs]
+          };
         });
         renderHome();
         if (window.location.hash) handleHashChange();
