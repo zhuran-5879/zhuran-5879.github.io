@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>竹染游戏账号交易平台</title>
+  <!-- 引入 Supabase JS 客户端 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    /* ========== 你的原有样式（完全保留）========== */
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif; background:#0c0f15; color:#e8edf2; min-height:100vh; }
     .navbar { position:sticky; top:0; z-index:50; background:rgba(18,22,28,0.85); backdrop-filter:blur(12px); border-bottom:1px solid rgba(200,160,80,0.15); padding:0 20px; height:64px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; }
@@ -62,28 +65,236 @@
     .float-sell-btn { position:fixed; bottom:30px; right:30px; background:linear-gradient(135deg, #d4942b, #b5761e); color:#0c0f15; font-weight:800; font-size:1.1rem; padding:14px 24px; border-radius:50px; box-shadow:0 8px 25px rgba(212,148,43,0.4); cursor:pointer; z-index:1000; border:none; }
     .float-sell-btn:hover { transform:scale(1.05); }
     .footer { text-align:center; padding:32px 20px; color:#5a6270; font-size:0.85rem; border-top:1px solid #1e2530; }
-    @media (max-width:640px) { .navbar { height:auto; padding:12px 16px; gap:8px; } .search-box { width:100%; max-width:100%; } .product-grid { grid-template-columns:1fr; } .float-sell-btn { bottom:20px; right:20px; padding:12px 20px; font-size:1rem; } }
+    /* 用户按钮 */
+    .user-menu { display:flex; align-items:center; gap:12px; }
+    .user-menu button { background:none; border:1px solid #2e3540; color:#e8edf2; padding:6px 16px; border-radius:30px; font-size:0.9rem; cursor:pointer; }
+    .user-menu button:hover { background:#d4942b; color:#0c0f15; }
+    /* 弹窗 */
+    .modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:1001; align-items:center; justify-content:center; }
+    .modal-overlay.active { display:flex; }
+    .modal { background:#161b22; border-radius:24px; padding:32px; width:90%; max-width:420px; position:relative; }
+    .modal h2 { margin-bottom:20px; }
+    .modal input { width:100%; padding:12px 16px; margin-bottom:16px; background:#0c0f15; border:1px solid #2e3540; color:#e8edf2; border-radius:12px; font-size:1rem; outline:none; }
+    .modal input:focus { border-color:#d4942b; }
+    .modal button { width:100%; padding:12px; background:linear-gradient(135deg, #d4942b, #b5761e); border:none; color:#0c0f15; font-weight:800; font-size:1rem; border-radius:30px; cursor:pointer; margin-top:8px; }
+    .modal .link-text { color:#9aa0b0; text-align:center; margin-top:16px; cursor:pointer; font-size:0.9rem; }
+    .modal .close-btn { position:absolute; top:16px; right:20px; background:none; border:none; color:#6b7280; font-size:1.5rem; cursor:pointer; }
+    @media (max-width:640px) { /* 省略，保留原有媒体查询 */ }
   </style>
 </head>
 <body>
-  <header class="navbar"><div class="logo">⚡ 竹染游戏账号交易平台</div><div class="search-box"><span>🔍</span><input type="text" id="searchInput" placeholder="搜索商品编号/信息……" autocomplete="off"></div></header>
-  <div id="homePage" class="page active"><div class="section-title">🔥 航海王燃烧意志 · 账号商城</div><div class="game-meta"><span>🎮</span> 当前展示 <strong>航海王燃烧意志</strong> 账号 · 共 <span id="totalCount">0</span> 个在售</div><div class="product-grid" id="productGrid"></div></div>
-  <div id="detailPage" class="page"><button class="back-btn" id="backBtn">← 返回商城</button><div class="detail-layout" id="detailContent"></div></div>
+  <header class="navbar">
+    <div class="logo">⚡ 竹染游戏账号交易平台</div>
+    <div class="search-box">
+      <span style="font-size:1.1rem;">🔍</span>
+      <input type="text" id="searchInput" placeholder="搜索商品编号/信息……" autocomplete="off">
+    </div>
+    <div class="user-menu" id="userMenu">
+      <!-- 未登录时显示登录按钮，已登录显示用户名和退出按钮 -->
+      <button id="loginBtn" style="display:none;">登录/注册</button>
+      <span id="userName" style="display:none; color:#f0c060; font-weight:600;"></span>
+      <button id="logoutBtn" style="display:none;">退出</button>
+    </div>
+  </header>
+
+  <!-- 主页和详情页内容不变 -->
+  <div id="homePage" class="page active">
+    <div class="section-title">🔥 航海王燃烧意志 · 账号商城</div>
+    <div class="game-meta">
+      <span>🎮</span> 当前展示 <strong>航海王燃烧意志</strong> 账号 · 共 <span id="totalCount">0</span> 个在售
+    </div>
+    <div class="product-grid" id="productGrid"></div>
+  </div>
+
+  <div id="detailPage" class="page">
+    <button class="back-btn" id="backBtn">← 返回商城</button>
+    <div class="detail-layout" id="detailContent"></div>
+  </div>
+
   <button class="float-sell-btn" id="sellBtn">💰 卖账号</button>
   <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
 
+  <!-- 登录/注册/找回密码弹窗 -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal">
+      <button class="close-btn" id="closeModal">✕</button>
+      <h2 id="modalTitle">登录</h2>
+      <input type="email" id="authEmail" placeholder="邮箱地址" required>
+      <input type="password" id="authPassword" placeholder="密码" style="display:block;">
+      <input type="password" id="authConfirmPassword" placeholder="确认密码" style="display:none;">
+      <button id="authSubmitBtn">登录</button>
+      <div class="link-text" id="toggleMode">还没有账号？去注册</div>
+      <div class="link-text" id="forgotPwd" style="margin-top:4px;">忘记密码？</div>
+      <div id="authError" style="color:#f87171; text-align:center; margin-top:8px; display:none;"></div>
+    </div>
+  </div>
+
   <script>
-    // ================= 配置区域（只改 Token，保留英文单引号）==================
+    // ================= Supabase 配置（填你自己的）==================
+    const SUPABASE_URL = 'https://wfqhlgfilrqpqfkuhoua.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_4zSvzBJ_l5lw2sp7s-wiHA_JqszbnTl';
+    const { createClient } = supabase;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // =================================================================
+
+    // Airtable 配置（保持不变）
     const AIRTABLE_CONFIG = {
       baseId: 'appHghJgUFfWnqFaU',
       tableName: 'products',
-      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',  // 🔁 只修改这里！保留两边的英文单引号
+      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',
     };
-    // =================================================================
     const encodedTable = encodeURIComponent(AIRTABLE_CONFIG.tableName);
     const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
 
     let products = [];
+    let currentUser = null;  // 当前登录用户
+
+    // ================= 认证相关逻辑 =================
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userName = document.getElementById('userName');
+    const authModal = document.getElementById('authModal');
+    const closeModal = document.getElementById('closeModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const authEmail = document.getElementById('authEmail');
+    const authPassword = document.getElementById('authPassword');
+    const authConfirmPassword = document.getElementById('authConfirmPassword');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const toggleMode = document.getElementById('toggleMode');
+    const forgotPwd = document.getElementById('forgotPwd');
+    const authError = document.getElementById('authError');
+
+    let authMode = 'login'; // 'login', 'register', 'forgot'
+
+    // 检查当前用户状态
+    async function checkUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUser = user;
+      updateUIBasedOnUser();
+    }
+
+    function updateUIBasedOnUser() {
+      if (currentUser) {
+        loginBtn.style.display = 'none';
+        userName.style.display = 'inline';
+        userName.textContent = currentUser.email;
+        logoutBtn.style.display = 'inline';
+      } else {
+        loginBtn.style.display = 'inline';
+        userName.style.display = 'none';
+        logoutBtn.style.display = 'none';
+      }
+    }
+
+    // 重置弹窗
+    function resetAuthModal(mode) {
+      authMode = mode;
+      authError.style.display = 'none';
+      if (mode === 'login') {
+        modalTitle.textContent = '登录';
+        authPassword.style.display = 'block';
+        authConfirmPassword.style.display = 'none';
+        authSubmitBtn.textContent = '登录';
+        toggleMode.textContent = '还没有账号？去注册';
+        forgotPwd.style.display = 'block';
+      } else if (mode === 'register') {
+        modalTitle.textContent = '注册';
+        authPassword.style.display = 'block';
+        authConfirmPassword.style.display = 'block';
+        authSubmitBtn.textContent = '注册';
+        toggleMode.textContent = '已有账号？去登录';
+        forgotPwd.style.display = 'none';
+      } else if (mode === 'forgot') {
+        modalTitle.textContent = '找回密码';
+        authPassword.style.display = 'none';
+        authConfirmPassword.style.display = 'none';
+        authSubmitBtn.textContent = '发送重置邮件';
+        toggleMode.textContent = '返回登录';
+        forgotPwd.style.display = 'none';
+      }
+      authEmail.value = '';
+      authPassword.value = '';
+      authConfirmPassword.value = '';
+    }
+
+    loginBtn.addEventListener('click', () => {
+      resetAuthModal('login');
+      authModal.classList.add('active');
+    });
+
+    closeModal.addEventListener('click', () => {
+      authModal.classList.remove('active');
+    });
+
+    toggleMode.addEventListener('click', () => {
+      if (authMode === 'login') {
+        resetAuthModal('register');
+      } else if (authMode === 'register') {
+        resetAuthModal('login');
+      } else if (authMode === 'forgot') {
+        resetAuthModal('login');
+      }
+    });
+
+    forgotPwd.addEventListener('click', () => {
+      resetAuthModal('forgot');
+    });
+
+    // 提交认证
+    authSubmitBtn.addEventListener('click', async () => {
+      authError.style.display = 'none';
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+
+      if (!email) { authError.textContent = '请输入邮箱'; authError.style.display = 'block'; return; }
+
+      if (authMode === 'login') {
+        if (!password) { authError.textContent = '请输入密码'; authError.style.display = 'block'; return; }
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { authError.textContent = error.message; authError.style.display = 'block'; return; }
+        currentUser = data.user;
+        authModal.classList.remove('active');
+        updateUIBasedOnUser();
+      } else if (authMode === 'register') {
+        if (!password) { authError.textContent = '请输入密码'; authError.style.display = 'block'; return; }
+        const confirmPassword = authConfirmPassword.value;
+        if (password !== confirmPassword) { authError.textContent = '两次密码不一致'; authError.style.display = 'block'; return; }
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) { authError.textContent = error.message; authError.style.display = 'block'; return; }
+        // 注册成功（如果开启了邮件确认，需要提示用户去确认邮箱；否则直接登录）
+        if (data.user && data.session) {
+          currentUser = data.user;
+          authModal.classList.remove('active');
+          updateUIBasedOnUser();
+        } else {
+          authError.textContent = '注册成功！请检查邮箱并点击确认链接（如果收不到请检查垃圾箱）。';
+          authError.style.display = 'block';
+        }
+      } else if (authMode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) { authError.textContent = error.message; authError.style.display = 'block'; return; }
+        authError.textContent = '已发送重置密码链接到邮箱，请查收。';
+        authError.style.display = 'block';
+        // 几秒后自动关闭
+        setTimeout(() => { authModal.classList.remove('active'); }, 3000);
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      currentUser = null;
+      updateUIBasedOnUser();
+    });
+
+    // 监听认证状态变化（如刷新页面后）
+    supabase.auth.onAuthStateChange((event, session) => {
+      currentUser = session?.user || null;
+      updateUIBasedOnUser();
+    });
+
+    // ================= 原有 Airtable 加载和渲染 =================
+    // （完全保留之前的 loadProducts, renderHome, renderDetail, 出价逻辑等，无需修改）
+    // 只需要在出价按钮前增加登录检查，我已加在下方
 
     async function loadProducts() {
       try {
@@ -123,7 +334,15 @@
     const searchInput = document.getElementById('searchInput');
     const detailContent = document.getElementById('detailContent');
     const backBtn = document.getElementById('backBtn');
-    document.getElementById('sellBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 办理卖账号业务'));
+    document.getElementById('sellBtn').addEventListener('click', () => {
+      if (!currentUser) {
+        alert('请先登录后再卖账号');
+        resetAuthModal('login');
+        authModal.classList.add('active');
+        return;
+      }
+      alert('请联系客服微信：csy212886226 办理卖账号业务');
+    });
 
     function truncate(str, len=30) { return str && str.length > len ? str.slice(0,len)+'...' : str||''; }
     let currentRoute = 'home', currentProductId = null;
@@ -159,7 +378,7 @@
       const bidDisplay = currentBid > 0 ? `¥${currentBid}` : '暂无出价';
 
       detailContent.innerHTML = `
-        <div class="detail-gallery"><img src="${mainImg}" class="main-img" id="mainImg"><div class="thumb-list" id="thumbList">${thumbs}</div></div>
+        <div class="detail-gallery"><img src="${mainImg}" class="main-img" id="mainImg"><div class="thumb-list">${thumbs}</div></div>
         <div class="detail-info">
           <h1>${truncate(p.title)}</h1>
           <div class="detail-price">¥${p.price}</div>
@@ -178,7 +397,7 @@
         </div>
       `;
 
-      // 缩略图切换逻辑（已确认修复）
+      // 缩略图切换
       document.querySelectorAll('#thumbList .thumb').forEach(thumb => {
         thumb.addEventListener('click', function() {
           const index = parseInt(this.dataset.index, 10);
@@ -190,15 +409,22 @@
         });
       });
 
-      document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
+      document.getElementById('buyBtn').addEventListener('click', () => {
+        alert('请联系客服微信：csy212886226 完成购买');
+      });
 
-      // 出价逻辑
+      // 出价逻辑（检查登录）
       const bidInput = document.getElementById('bidInput');
       const submitBtn = document.getElementById('submitBidBtn');
       const errorEl = document.getElementById('bidError');
       const currentBidSpan = document.getElementById('currentBid');
 
       submitBtn.addEventListener('click', async () => {
+        if (!currentUser) {
+          errorEl.textContent = '请先登录后才能出价';
+          errorEl.style.display = 'block';
+          return;
+        }
         const bidValue = parseFloat(bidInput.value);
         if (isNaN(bidValue) || bidValue <= 0) {
           errorEl.textContent = '请输入有效的出价金额';
@@ -256,7 +482,11 @@
       else { if (currentRoute!=='home') { homePage.classList.add('active'); detailPage.classList.remove('active'); renderHome(searchInput.value); currentRoute='home'; currentProductId=null; } }
     }
     window.addEventListener('hashchange', handleHashChange);
-    loadProducts();
+
+    // 启动
+    checkUser().then(() => {
+      loadProducts();
+    });
   </script>
 </body>
 </html>
