@@ -4,10 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>竹染游戏账号交易平台</title>
-  <!-- 引入 Supabase JS 客户端 -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* ========== 你的原有样式（完全保留）========== */
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif; background:#0c0f15; color:#e8edf2; min-height:100vh; }
     .navbar { position:sticky; top:0; z-index:50; background:rgba(18,22,28,0.85); backdrop-filter:blur(12px); border-bottom:1px solid rgba(200,160,80,0.15); padding:0 20px; height:64px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; }
@@ -65,7 +62,7 @@
     .float-sell-btn { position:fixed; bottom:30px; right:30px; background:linear-gradient(135deg, #d4942b, #b5761e); color:#0c0f15; font-weight:800; font-size:1.1rem; padding:14px 24px; border-radius:50px; box-shadow:0 8px 25px rgba(212,148,43,0.4); cursor:pointer; z-index:1000; border:none; }
     .float-sell-btn:hover { transform:scale(1.05); }
     .footer { text-align:center; padding:32px 20px; color:#5a6270; font-size:0.85rem; border-top:1px solid #1e2530; }
-    /* 用户按钮 */
+    /* 用户系统 */
     .user-menu { display:flex; align-items:center; gap:12px; }
     .user-menu button { background:none; border:1px solid #2e3540; color:#e8edf2; padding:6px 16px; border-radius:30px; font-size:0.9rem; cursor:pointer; }
     .user-menu button:hover { background:#d4942b; color:#0c0f15; }
@@ -74,12 +71,12 @@
     .modal-overlay.active { display:flex; }
     .modal { background:#161b22; border-radius:24px; padding:32px; width:90%; max-width:420px; position:relative; }
     .modal h2 { margin-bottom:20px; }
-    .modal input { width:100%; padding:12px 16px; margin-bottom:16px; background:#0c0f15; border:1px solid #2e3540; color:#e8edf2; border-radius:12px; font-size:1rem; outline:none; }
-    .modal input:focus { border-color:#d4942b; }
+    .modal input, .modal select { width:100%; padding:12px 16px; margin-bottom:16px; background:#0c0f15; border:1px solid #2e3540; color:#e8edf2; border-radius:12px; font-size:1rem; outline:none; }
+    .modal input:focus, .modal select:focus { border-color:#d4942b; }
     .modal button { width:100%; padding:12px; background:linear-gradient(135deg, #d4942b, #b5761e); border:none; color:#0c0f15; font-weight:800; font-size:1rem; border-radius:30px; cursor:pointer; margin-top:8px; }
     .modal .link-text { color:#9aa0b0; text-align:center; margin-top:16px; cursor:pointer; font-size:0.9rem; }
     .modal .close-btn { position:absolute; top:16px; right:20px; background:none; border:none; color:#6b7280; font-size:1.5rem; cursor:pointer; }
-    @media (max-width:640px) { /* 省略，保留原有媒体查询 */ }
+    @media (max-width:640px) { .navbar { height:auto; padding:12px 16px; gap:8px; } .search-box { width:100%; max-width:100%; } .product-grid { grid-template-columns:1fr; } .float-sell-btn { bottom:20px; right:20px; padding:12px 20px; font-size:1rem; } }
   </style>
 </head>
 <body>
@@ -90,14 +87,12 @@
       <input type="text" id="searchInput" placeholder="搜索商品编号/信息……" autocomplete="off">
     </div>
     <div class="user-menu" id="userMenu">
-      <!-- 未登录时显示登录按钮，已登录显示用户名和退出按钮 -->
       <button id="loginBtn" style="display:none;">登录/注册</button>
       <span id="userName" style="display:none; color:#f0c060; font-weight:600;"></span>
       <button id="logoutBtn" style="display:none;">退出</button>
     </div>
   </header>
 
-  <!-- 主页和详情页内容不变 -->
   <div id="homePage" class="page active">
     <div class="section-title">🔥 航海王燃烧意志 · 账号商城</div>
     <div class="game-meta">
@@ -119,9 +114,21 @@
     <div class="modal">
       <button class="close-btn" id="closeModal">✕</button>
       <h2 id="modalTitle">登录</h2>
-      <input type="email" id="authEmail" placeholder="邮箱地址" required>
-      <input type="password" id="authPassword" placeholder="密码" style="display:block;">
+      <input type="text" id="authAccount" placeholder="账号 (8-16位)" maxlength="16" minlength="8" autocomplete="off">
+      <input type="password" id="authPassword" placeholder="密码 (英文+数字)" style="display:block;">
       <input type="password" id="authConfirmPassword" placeholder="确认密码" style="display:none;">
+      <!-- 密保问题区域（注册/找回密码时显示） -->
+      <select id="authQuestion" style="display:none;">
+        <option value="">-- 请选择密保问题 --</option>
+        <option value="你的出生城市是？">你的出生城市是？</option>
+        <option value="你的小学名称是？">你的小学名称是？</option>
+        <option value="你的父亲的名字是？">你的父亲的名字是？</option>
+        <option value="你的母亲的名字是？">你的母亲的名字是？</option>
+        <option value="你最喜欢的食物是？">你最喜欢的食物是？</option>
+      </select>
+      <input type="text" id="authAnswer" placeholder="密保答案" style="display:none;" autocomplete="off">
+      <!-- 找回密码时显示问题和答案输入 -->
+      <div id="forgotQuestionDisplay" style="display:none; margin-bottom:16px; color:#9aa0b0;"></div>
       <button id="authSubmitBtn">登录</button>
       <div class="link-text" id="toggleMode">还没有账号？去注册</div>
       <div class="link-text" id="forgotPwd" style="margin-top:4px;">忘记密码？</div>
@@ -130,53 +137,65 @@
   </div>
 
   <script>
-       // ================= Supabase 配置 ==================
-    const SUPABASE_URL = 'https://wfqhlgfilrqpqfkuhoua.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_4zSvzBJ_l5lw2sp7s-wiHA_JqszbnTl';
-    const { createClient } = supabase;  // 全局 supabase 是 SDK 暴露的
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     // ================= Airtable 配置 ==================
     const AIRTABLE_CONFIG = {
       baseId: 'appHghJgUFfWnqFaU',
-      tableName: 'products',
-      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',  // 替换成你的读写 Token
+      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',   // ⚠️ 替换成你自己的读写 Token
     };
-    const encodedTable = encodeURIComponent(AIRTABLE_CONFIG.tableName);
-    const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
+    const TABLE_PRODUCTS = 'products';
+    const TABLE_USERS = 'users';
+    const API_URL_PRODUCTS = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_PRODUCTS)}`;
+    const API_URL_USERS = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}`;
+
+    // 哈希盐值
+    const SALT = 'zhuran_2026_salt';
 
     let products = [];
-    let currentUser = null;
+    let currentUser = null;  // 当前登录的用户名
 
-    // ================= 认证相关 =================
+    // ================= 密码哈希函数（SHA-256）=================
+    async function sha256(message) {
+      const msgBuffer = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function hashPassword(password) {
+      return await sha256(password + SALT);
+    }
+
+    async function hashAnswer(answer) {
+      return await sha256(answer.toLowerCase() + SALT);
+    }
+
+    // ================= 用户管理 =================
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const userName = document.getElementById('userName');
     const authModal = document.getElementById('authModal');
     const closeModal = document.getElementById('closeModal');
     const modalTitle = document.getElementById('modalTitle');
-    const authEmail = document.getElementById('authEmail');
+    const authAccount = document.getElementById('authAccount');
     const authPassword = document.getElementById('authPassword');
     const authConfirmPassword = document.getElementById('authConfirmPassword');
+    const authQuestion = document.getElementById('authQuestion');
+    const authAnswer = document.getElementById('authAnswer');
+    const forgotQuestionDisplay = document.getElementById('forgotQuestionDisplay');
     const authSubmitBtn = document.getElementById('authSubmitBtn');
     const toggleMode = document.getElementById('toggleMode');
     const forgotPwd = document.getElementById('forgotPwd');
     const authError = document.getElementById('authError');
 
-    let authMode = 'login';
-
-    async function checkUser() {
-      if (!supabaseClient) return;
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      currentUser = user;
-      updateUIBasedOnUser();
-    }
+    let authMode = 'login'; // 'login', 'register', 'forgot'
+    let forgotUsername = ''; // 用于找回密码时暂存用户名
 
     function updateUIBasedOnUser() {
       if (!loginBtn || !userName || !logoutBtn) return;
       if (currentUser) {
         loginBtn.style.display = 'none';
         userName.style.display = 'inline';
-        userName.textContent = currentUser.email;
+        userName.textContent = currentUser;
         logoutBtn.style.display = 'inline';
       } else {
         loginBtn.style.display = 'inline';
@@ -186,13 +205,20 @@
     }
 
     function resetAuthModal(mode) {
-      if (!authError || !modalTitle || !authPassword || !authConfirmPassword || !authSubmitBtn || !toggleMode || !forgotPwd) return;
-      authMode = mode;
       authError.style.display = 'none';
+      authMode = mode;
+      // 隐藏所有可选字段
+      authPassword.style.display = 'none';
+      authConfirmPassword.style.display = 'none';
+      authQuestion.style.display = 'none';
+      authAnswer.style.display = 'none';
+      forgotQuestionDisplay.style.display = 'none';
+      authAccount.style.display = 'block';
+      forgotPwd.style.display = 'none';
+
       if (mode === 'login') {
         modalTitle.textContent = '登录';
         authPassword.style.display = 'block';
-        authConfirmPassword.style.display = 'none';
         authSubmitBtn.textContent = '登录';
         toggleMode.textContent = '还没有账号？去注册';
         forgotPwd.style.display = 'block';
@@ -200,6 +226,8 @@
         modalTitle.textContent = '注册';
         authPassword.style.display = 'block';
         authConfirmPassword.style.display = 'block';
+        authQuestion.style.display = 'block';
+        authAnswer.style.display = 'block';
         authSubmitBtn.textContent = '注册';
         toggleMode.textContent = '已有账号？去登录';
         forgotPwd.style.display = 'none';
@@ -207,13 +235,18 @@
         modalTitle.textContent = '找回密码';
         authPassword.style.display = 'none';
         authConfirmPassword.style.display = 'none';
-        authSubmitBtn.textContent = '发送重置邮件';
+        authSubmitBtn.textContent = '下一步';
         toggleMode.textContent = '返回登录';
         forgotPwd.style.display = 'none';
       }
-      if (authEmail) authEmail.value = '';
-      if (authPassword) authPassword.value = '';
-      if (authConfirmPassword) authConfirmPassword.value = '';
+
+      // 清空输入
+      authAccount.value = '';
+      authPassword.value = '';
+      authConfirmPassword.value = '';
+      authQuestion.value = '';
+      authAnswer.value = '';
+      forgotQuestionDisplay.textContent = '';
     }
 
     if (loginBtn) loginBtn.addEventListener('click', () => { resetAuthModal('login'); authModal.classList.add('active'); });
@@ -225,59 +258,164 @@
     });
     if (forgotPwd) forgotPwd.addEventListener('click', () => { resetAuthModal('forgot'); });
 
-    authSubmitBtn.addEventListener('click', async () => {
-      if (!authError || !authEmail) return;
-      authError.style.display = 'none';
-      const email = authEmail.value.trim();
-      const password = authPassword ? authPassword.value : '';
+    // 从 Airtable 查询用户
+    async function findUser(username) {
+      const formula = encodeURIComponent(`{用户名}="${username}"`);
+      const url = `${API_URL_USERS}?filterByFormula=${formula}&maxRecords=1`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` }
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.records.length > 0 ? data.records[0] : null;
+    }
 
-      if (!email) { authError.textContent = '请输入邮箱'; authError.style.display = 'block'; return; }
+    // 认证提交
+    authSubmitBtn.addEventListener('click', async () => {
+      authError.style.display = 'none';
+      const account = authAccount.value.trim();
+      if (!account || account.length < 8 || account.length > 16) {
+        authError.textContent = '账号必须为8-16位';
+        authError.style.display = 'block';
+        return;
+      }
 
       if (authMode === 'login') {
+        const password = authPassword.value;
         if (!password) { authError.textContent = '请输入密码'; authError.style.display = 'block'; return; }
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) { authError.textContent = error.message; authError.style.display = 'block'; return; }
-        currentUser = data.user;
+        if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+          authError.textContent = '密码必须包含英文和数字';
+          authError.style.display = 'block';
+          return;
+        }
+        const record = await findUser(account);
+        if (!record) { authError.textContent = '账号不存在'; authError.style.display = 'block'; return; }
+        const hashedPassword = await hashPassword(password);
+        if (record.fields['密码'] !== hashedPassword) {
+          authError.textContent = '密码错误'; authError.style.display = 'block';
+          return;
+        }
+        currentUser = account;
         authModal.classList.remove('active');
         updateUIBasedOnUser();
+
       } else if (authMode === 'register') {
-        if (!password) { authError.textContent = '请输入密码'; authError.style.display = 'block'; return; }
+        const password = authPassword.value;
         const confirmPassword = authConfirmPassword.value;
-        if (password !== confirmPassword) { authError.textContent = '两次密码不一致'; authError.style.display = 'block'; return; }
-        const { data, error } = await supabaseClient.auth.signUp({ email, password });
-        if (error) { authError.textContent = error.message; authError.style.display = 'block'; return; }
-        if (data.user && data.session) {
-          currentUser = data.user;
-          authModal.classList.remove('active');
-          updateUIBasedOnUser();
-        } else {
-          authError.textContent = '注册成功！请检查邮箱并点击确认链接（如果收不到请检查垃圾箱）。';
+        if (!password || password.length < 6) { authError.textContent = '密码至少6位'; authError.style.display = 'block'; return; }
+        if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+          authError.textContent = '密码必须包含英文和数字';
           authError.style.display = 'block';
+          return;
         }
+        if (password !== confirmPassword) { authError.textContent = '两次密码不一致'; authError.style.display = 'block'; return; }
+        const question = authQuestion.value;
+        const answer = authAnswer.value.trim();
+        if (!question || !answer) { authError.textContent = '请选择密保问题并填写答案'; authError.style.display = 'block'; return; }
+        // 检查账号是否已存在
+        const existRecord = await findUser(account);
+        if (existRecord) { authError.textContent = '账号已被注册'; authError.style.display = 'block'; return; }
+
+        const hashedPassword = await hashPassword(password);
+        const hashedAnswer = await hashAnswer(answer);
+        const body = {
+          records: [{
+            fields: {
+              '用户名': account,
+              '密码': hashedPassword,
+              '密保问题': question,
+              '密保答案': hashedAnswer
+            }
+          }]
+        };
+        const res = await fetch(API_URL_USERS, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) { authError.textContent = '注册失败，请稍后重试'; authError.style.display = 'block'; return; }
+        currentUser = account;
+        authModal.classList.remove('active');
+        updateUIBasedOnUser();
+
       } else if (authMode === 'forgot') {
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
-        if (error) { authError.textContent = error.message; authError.style.display = 'block'; return; }
-        authError.textContent = '已发送重置密码链接到邮箱，请查收。';
-        authError.style.display = 'block';
-        setTimeout(() => { authModal.classList.remove('active'); }, 3000);
+        // 找回密码步骤分两步：
+        // 第一步：输入账号，显示密保问题
+        if (!forgotUsername) {
+          const record = await findUser(account);
+          if (!record) { authError.textContent = '账号不存在'; authError.style.display = 'block'; return; }
+          // 显示密保问题，并隐藏账号输入框，显示答案输入
+          forgotUsername = account;
+          authAccount.style.display = 'none';
+          authPassword.style.display = 'none';
+          authSubmitBtn.textContent = '验证答案';
+          forgotQuestionDisplay.style.display = 'block';
+          forgotQuestionDisplay.textContent = '密保问题：' + record.fields['密保问题'];
+          authAnswer.style.display = 'block';
+          authError.style.display = 'none';
+        } else {
+          // 第二步：验证答案，并重置密码
+          const answer = authAnswer.value.trim();
+          if (!answer) { authError.textContent = '请输入密保答案'; authError.style.display = 'block'; return; }
+          const record = await findUser(forgotUsername);
+          if (!record) { authError.textContent = '账号异常'; authError.style.display = 'block'; return; }
+          const hashedAnswer = await hashAnswer(answer);
+          if (record.fields['密保答案'] !== hashedAnswer) {
+            authError.textContent = '密保答案错误'; authError.style.display = 'block';
+            return;
+          }
+          // 答案正确，允许重置密码
+          authPassword.style.display = 'block';
+          authConfirmPassword.style.display = 'block';
+          authAnswer.style.display = 'none';
+          authSubmitBtn.textContent = '重置密码';
+          modalTitle.textContent = '重置密码';
+          // 更改模式为重置密码
+          authMode = 'resetPassword';
+          authError.style.display = 'none';
+        }
+      } else if (authMode === 'resetPassword') {
+        // 重置密码逻辑
+        const newPassword = authPassword.value;
+        const confirmNewPassword = authConfirmPassword.value;
+        if (!newPassword || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+          authError.textContent = '密码必须包含英文和数字'; authError.style.display = 'block'; return;
+        }
+        if (newPassword !== confirmNewPassword) { authError.textContent = '两次密码不一致'; authError.style.display = 'block'; return; }
+        const record = await findUser(forgotUsername);
+        if (!record) { authError.textContent = '用户不存在'; authError.style.display = 'block'; return; }
+        const hashedPassword = await hashPassword(newPassword);
+        const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${record.id}`;
+        const res = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ fields: { '密码': hashedPassword } })
+        });
+        if (!res.ok) { authError.textContent = '重置失败，请稍后重试'; authError.style.display = 'block'; return; }
+        alert('密码重置成功，请重新登录');
+        authModal.classList.remove('active');
+        forgotUsername = '';
+        currentUser = null;
+        updateUIBasedOnUser();
       }
     });
 
-    if (logoutBtn) logoutBtn.addEventListener('click', async () => {
-      await supabaseClient.auth.signOut();
+    // 退出登录
+    logoutBtn.addEventListener('click', () => {
       currentUser = null;
       updateUIBasedOnUser();
     });
 
-    supabaseClient.auth.onAuthStateChange((event, session) => {
-      currentUser = session?.user || null;
-      updateUIBasedOnUser();
-    });
-
-    // ================= 原有商品加载和展示 =================
+    // ================= 商品加载和展示（保持不变）=================
     async function loadProducts() {
       try {
-        const res = await fetch(API_URL, {
+        const res = await fetch(API_URL_PRODUCTS, {
           headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` }
         });
         if (!res.ok) throw new Error('网络请求失败');
@@ -424,7 +562,7 @@
         errorEl.style.display = 'none';
 
         try {
-          const patchUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}/${p.recordId}`;
+          const patchUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_PRODUCTS)}/${p.recordId}`;
           const res = await fetch(patchUrl, {
             method: 'PATCH',
             headers: {
@@ -480,9 +618,8 @@
     window.addEventListener('hashchange', handleHashChange);
 
     // 启动
-    checkUser().then(() => {
-      loadProducts();
-    });
+    updateUIBasedOnUser();
+    loadProducts();
   </script>
 </body>
 </html>
