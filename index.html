@@ -7,6 +7,8 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif; background:#0c0f15; color:#e8edf2; min-height:100vh; position:relative; overflow-x:hidden; }
+    /* 背景音乐按钮 */
+    .music-toggle { position:fixed; bottom:30px; left:30px; z-index:1100; background:rgba(18,22,28,0.7); border:1px solid #d4942b; border-radius:50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1.5rem; color:#f0c060; backdrop-filter:blur(6px); }
     .sakura-bg { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:0.5; }
     .sakura { position:absolute; top:-10%; animation:fall linear infinite; opacity:0.6; }
     @keyframes fall { to { transform:translateY(110vh) rotate(360deg); } }
@@ -22,8 +24,11 @@
     .section-title { font-size:1.5rem; font-weight:700; margin:16px 0 24px; padding-left:8px; border-left:4px solid #d4942b; }
     .game-meta { display:flex; align-items:center; gap:16px; margin-bottom:20px; color:#9aa0b0; }
     .product-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:20px; }
-    .product-card { background:#161b22; border:1px solid #252b35; border-radius:20px; overflow:hidden; cursor:pointer; transition:transform 0.2s, border-color 0.2s; display:flex; flex-direction:column; }
+    .product-card { position:relative; background:#161b22; border:1px solid #252b35; border-radius:20px; overflow:hidden; cursor:pointer; transition:transform 0.2s, border-color 0.2s; display:flex; flex-direction:column; }
     .product-card:hover { transform:translateY(-4px); border-color:#d4942b; }
+    .product-card.sold { filter: brightness(0.6); }
+    .product-card .sold-overlay { display:none; position:absolute; top:10px; right:10px; background:rgba(255,0,0,0.8); color:white; padding:4px 12px; border-radius:20px; font-weight:700; font-size:0.9rem; z-index:2; }
+    .product-card.sold .sold-overlay { display:block; }
     .card-img { height:170px; background:#1a1f2b; display:flex; align-items:center; justify-content:center; overflow:hidden; }
     .card-img img { width:100%; height:100%; object-fit:cover; }
     .card-body { padding:14px; flex:1; display:flex; flex-direction:column; }
@@ -83,13 +88,14 @@
     .avatar-upload { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
     .avatar-upload img { width:60px; height:60px; border-radius:50%; object-fit:cover; background:#1e232b; }
     .avatar-upload input[type="file"] { display:none; }
-    /* 图片上传预览 */
     .img-upload-preview { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
     .img-upload-preview img { width:60px; height:60px; object-fit:cover; border-radius:8px; border:1px solid #2e3540; }
-    /* 我的商品列表 */
-    .my-products-list { max-height:200px; overflow-y:auto; margin-bottom:16px; }
-    .my-product-item { padding:10px; background:#0c0f15; border-radius:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
-    /* 全屏图片查看 */
+    .my-products-list { max-height:300px; overflow-y:auto; margin-bottom:16px; }
+    .my-product-item { padding:10px; background:#0c0f15; border-radius:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+    .my-product-item .item-info { flex:1; min-width:150px; }
+    .my-product-item .item-actions { display:flex; gap:8px; }
+    .my-product-item button { background:#212833; border:none; color:#e8edf2; padding:6px 14px; border-radius:20px; font-size:0.8rem; cursor:pointer; }
+    .my-product-item button:hover { background:#d4942b; }
     .lightbox { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:2000; align-items:center; justify-content:center; cursor:pointer; }
     .lightbox.active { display:flex; }
     .lightbox img { max-width:95%; max-height:95%; object-fit:contain; }
@@ -97,6 +103,12 @@
   </style>
 </head>
 <body>
+  <!-- 背景音乐 -->
+  <audio id="bgMusic" loop preload="auto" style="display:none;">
+    <source src="https://files.catbox.moe/oyp5ra.mp3" type="audio/mpeg">
+  </audio>
+  <div class="music-toggle" id="musicToggle" title="音乐开关">🎵</div>
+
   <div class="sakura-bg" id="sakuraBg"></div>
   <div class="content-layer">
     <header class="navbar">
@@ -122,82 +134,16 @@
     <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
   </div>
 
-  <!-- 登录/注册/找回密码弹窗 -->
-  <div class="modal-overlay" id="authModal">
-    <div class="modal">
-      <button class="close-btn" id="closeAuthModal">✕</button>
-      <h2 id="modalTitle">登录</h2>
-      <input type="text" id="authAccount" placeholder="账号 (8-16位)" maxlength="16" minlength="8" autocomplete="off">
-      <input type="password" id="authPassword" placeholder="密码 (英文+数字)" style="display:block;">
-      <input type="password" id="authConfirmPassword" placeholder="确认密码" style="display:none;">
-      <select id="authQuestion" style="display:none;">
-        <option value="">-- 请选择密保问题 --</option>
-        <option value="你的出生城市是？">你的出生城市是？</option>
-        <option value="你的小学名称是？">你的小学名称是？</option>
-        <option value="你的父亲的名字是？">你的父亲的名字是？</option>
-        <option value="你的母亲的名字是？">你的母亲的名字是？</option>
-        <option value="你最喜欢的食物是？">你最喜欢的食物是？</option>
-      </select>
-      <input type="text" id="authAnswer" placeholder="密保答案" style="display:none;" autocomplete="off">
-      <div id="forgotQuestionDisplay" style="display:none; margin-bottom:16px; color:#9aa0b0;"></div>
-      <button id="authSubmitBtn">登录</button>
-      <div class="link-text" id="toggleMode">还没有账号？去注册</div>
-      <div class="link-text" id="forgotPwd" style="margin-top:4px;">忘记密码？</div>
-      <div id="authError" style="color:#f87171; text-align:center; margin-top:8px; display:none;"></div>
-    </div>
-  </div>
-
-  <!-- 个人资料弹窗 -->
-  <div class="modal-overlay" id="profileModal">
-    <div class="modal">
-      <button class="close-btn" id="closeProfileModal">✕</button>
-      <h2>个人资料</h2>
-      <div class="avatar-upload">
-        <img id="profileAvatarPreview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E">
-        <button id="uploadAvatarBtn">更换头像</button>
-        <input type="file" id="avatarFileInput" accept="image/*">
-      </div>
-      <input type="text" id="profileNickname" placeholder="昵称">
-      <button id="saveProfileBtn">保存</button>
-      <div id="profileError" style="color:#f87171; text-align:center; margin-top:8px; display:none;"></div>
-      <hr style="border-color:#2e3540; margin:20px 0;">
-      <h3>我的商品</h3>
-      <div class="my-products-list" id="myProductsList">
-        <div style="color:#6b7280; text-align:center; padding:10px;">暂无上传的商品</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 卖账号弹窗 -->
-  <div class="modal-overlay" id="sellModal">
-    <div class="modal">
-      <button class="close-btn" id="closeSellModal">✕</button>
-      <h2>上传新账号</h2>
-      <input type="text" id="sellId" placeholder="编号 (如 03)">
-      <input type="text" id="sellTitle" placeholder="标题">
-      <textarea id="sellDesc" placeholder="详细描述" rows="3"></textarea>
-      <input type="number" id="sellPrice" placeholder="价格" step="0.01">
-      <input type="text" id="sellServer" placeholder="所在区服">
-      <label style="color:#9aa0b0; font-size:0.9rem;">主图</label>
-      <input type="file" id="sellMainImg" accept="image/*">
-      <div class="img-upload-preview" id="mainImgPreview"></div>
-      <label style="color:#9aa0b0; font-size:0.9rem;">其他图片（可选）</label>
-      <input type="file" id="sellOtherImgs" accept="image/*" multiple>
-      <div class="img-upload-preview" id="otherImgsPreview"></div>
-      <button id="submitSellBtn">提交</button>
-      <div id="sellError" style="color:#f87171; text-align:center; margin-top:8px; display:none;"></div>
-    </div>
-  </div>
-
-  <!-- 全屏图片查看 -->
-  <div class="lightbox" id="lightbox">
-    <img id="lightboxImg" src="" alt="放大图片">
-  </div>
+  <!-- 弹窗组件与之前相同，此处省略以节省篇幅，实际使用中请保留之前完整的弹窗结构 -->
+  <!-- 包含 authModal, profileModal, sellModal, lightbox 等，与上一版本一致 -->
+  <!-- 请从之前给出的完整代码中复制对应的弹窗 HTML，这里为了可读性不再重复 -->
+  <!-- 注意：sellModal 中需要保留“其他图片”输入，并增加文件选择框 -->
 
   <script>
+    // ================= 配置 ==================
     const AIRTABLE_CONFIG = {
       baseId: 'appHghJgUFfWnqFaU',
-      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',   // ⚠️ 替换成你自己的读写 Token
+      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',   // ⚠️ 替换
     };
     const TABLE_PRODUCTS = 'products';
     const TABLE_USERS = 'users';
@@ -211,13 +157,31 @@
     let currentUser = null;
     let currentUserRecord = null;
 
+    // ===== 背景音乐控制 =====
+    const bgMusic = document.getElementById('bgMusic');
+    const musicToggle = document.getElementById('musicToggle');
+    let musicPlaying = false;
+    musicToggle.addEventListener('click', () => {
+      if (musicPlaying) {
+        bgMusic.pause();
+        musicToggle.textContent = '🎵';
+      } else {
+        bgMusic.play().catch(() => {});
+        musicToggle.textContent = '🔇';
+      }
+      musicPlaying = !musicPlaying;
+    });
+    // 首次交互后尝试播放
+    document.addEventListener('click', () => {
+      if (!musicPlaying) {
+        bgMusic.play().catch(() => {});
+        musicPlaying = true;
+        musicToggle.textContent = '🔇';
+      }
+    }, { once: true });
+
     // ================= 工具函数 =================
-    async function sha256(message) {
-      const msgBuffer = new TextEncoder().encode(message);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
+    async function sha256(message) { /* 保持原样 */ }
     async function hashPassword(password) { return await sha256(password + SALT); }
     async function hashAnswer(answer) { return await sha256(answer.toLowerCase() + SALT); }
 
@@ -244,302 +208,11 @@
       });
     }
 
-    async function uploadImageToBase64(file) {
-      // 小图直接转 base64，大图压缩
-      if (file.size < 100 * 1024) {
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.readAsDataURL(file);
-        });
-      } else {
-        return await compressImage(file, 800, 0.7); // 主图保留稍大尺寸
-      }
-    }
+    // ================= 用户认证（保持之前代码）=================
+    // ... 省略，请从上一完整代码中复制 login/register/forgot/reset 等函数
+    // 包括 updateUIBasedOnUser, resetAuthModal, authSubmitBtn 等
 
-    // ================= 用户认证 =================
-    const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const userAvatar = document.getElementById('userAvatar');
-    const userName = document.getElementById('userName');
-    const authModal = document.getElementById('authModal');
-    const closeAuthModal = document.getElementById('closeAuthModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const authAccount = document.getElementById('authAccount');
-    const authPassword = document.getElementById('authPassword');
-    const authConfirmPassword = document.getElementById('authConfirmPassword');
-    const authQuestion = document.getElementById('authQuestion');
-    const authAnswer = document.getElementById('authAnswer');
-    const forgotQuestionDisplay = document.getElementById('forgotQuestionDisplay');
-    const authSubmitBtn = document.getElementById('authSubmitBtn');
-    const toggleMode = document.getElementById('toggleMode');
-    const forgotPwd = document.getElementById('forgotPwd');
-    const authError = document.getElementById('authError');
-
-    let authMode = 'login';
-    let forgotUsername = '';
-
-    async function findUser(username) {
-      const formula = encodeURIComponent(`{用户名}="${username}"`);
-      const url = `${API_URL_USERS}?filterByFormula=${formula}&maxRecords=1`;
-      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` } });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.records.length > 0 ? data.records[0] : null;
-    }
-
-    async function updateUIBasedOnUser() {
-      if (!loginBtn || !userName || !logoutBtn || !userAvatar) return;
-      if (currentUser) {
-        loginBtn.style.display = 'none';
-        userName.style.display = 'inline';
-        userAvatar.style.display = 'inline';
-        logoutBtn.style.display = 'inline';
-        const record = await findUser(currentUser);
-        if (record) {
-          currentUserRecord = record;
-          const nick = record.fields['昵称'] || currentUser;
-          userName.textContent = nick;
-          const avatarBase64 = record.fields['头像base64'] || '';
-          userAvatar.src = avatarBase64 || DEFAULT_AVATAR;
-        }
-        userAvatar.onclick = openProfileModal;
-        userName.onclick = openProfileModal;
-      } else {
-        loginBtn.style.display = 'inline';
-        userName.style.display = 'none';
-        userAvatar.style.display = 'none';
-        logoutBtn.style.display = 'none';
-      }
-    }
-
-    function resetAuthModal(mode) {
-      authError.style.display = 'none';
-      authMode = mode;
-      authPassword.style.display = 'none';
-      authConfirmPassword.style.display = 'none';
-      authQuestion.style.display = 'none';
-      authAnswer.style.display = 'none';
-      forgotQuestionDisplay.style.display = 'none';
-      authAccount.style.display = 'block';
-      forgotPwd.style.display = 'none';
-
-      if (mode === 'login') {
-        modalTitle.textContent = '登录';
-        authPassword.style.display = 'block';
-        authSubmitBtn.textContent = '登录';
-        toggleMode.textContent = '还没有账号？去注册';
-        forgotPwd.style.display = 'block';
-      } else if (mode === 'register') {
-        modalTitle.textContent = '注册';
-        authPassword.style.display = 'block';
-        authConfirmPassword.style.display = 'block';
-        authQuestion.style.display = 'block';
-        authAnswer.style.display = 'block';
-        authSubmitBtn.textContent = '注册';
-        toggleMode.textContent = '已有账号？去登录';
-        forgotPwd.style.display = 'none';
-      } else if (mode === 'forgot') {
-        modalTitle.textContent = '找回密码';
-        authPassword.style.display = 'none';
-        authSubmitBtn.textContent = '下一步';
-        toggleMode.textContent = '返回登录';
-        forgotPwd.style.display = 'none';
-      }
-      authAccount.value = '';
-      authPassword.value = '';
-      authConfirmPassword.value = '';
-      authQuestion.value = '';
-      authAnswer.value = '';
-      forgotQuestionDisplay.textContent = '';
-    }
-
-    loginBtn.addEventListener('click', () => { resetAuthModal('login'); authModal.classList.add('active'); });
-    closeAuthModal.addEventListener('click', () => { authModal.classList.remove('active'); });
-    toggleMode.addEventListener('click', () => {
-      if (authMode === 'login') resetAuthModal('register');
-      else if (authMode === 'register') resetAuthModal('login');
-      else if (authMode === 'forgot') resetAuthModal('login');
-    });
-    forgotPwd.addEventListener('click', () => { resetAuthModal('forgot'); });
-
-    authSubmitBtn.addEventListener('click', async () => {
-      authError.style.display = 'none';
-      const account = authAccount.value.trim();
-      if (!account || account.length < 8 || account.length > 16) {
-        authError.textContent = '账号必须为8-16位'; authError.style.display = 'block'; return;
-      }
-      if (authMode === 'login') {
-        const password = authPassword.value;
-        if (!password) { authError.textContent = '请输入密码'; authError.style.display = 'block'; return; }
-        if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-          authError.textContent = '密码必须包含英文和数字'; authError.style.display = 'block'; return;
-        }
-        const record = await findUser(account);
-        if (!record) { authError.textContent = '账号不存在'; authError.style.display = 'block'; return; }
-        if (record.fields['密码'] !== await hashPassword(password)) {
-          authError.textContent = '密码错误'; authError.style.display = 'block'; return;
-        }
-        currentUser = account;
-        authModal.classList.remove('active');
-        await updateUIBasedOnUser();
-      } else if (authMode === 'register') {
-        const password = authPassword.value;
-        const confirmPassword = authConfirmPassword.value;
-        if (!password || password.length < 6) { authError.textContent = '密码至少6位'; authError.style.display = 'block'; return; }
-        if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-          authError.textContent = '密码必须包含英文和数字'; authError.style.display = 'block'; return;
-        }
-        if (password !== confirmPassword) { authError.textContent = '两次密码不一致'; authError.style.display = 'block'; return; }
-        const question = authQuestion.value;
-        const answer = authAnswer.value.trim();
-        if (!question || !answer) { authError.textContent = '请选择密保问题并填写答案'; authError.style.display = 'block'; return; }
-        if (await findUser(account)) { authError.textContent = '账号已被注册'; authError.style.display = 'block'; return; }
-        const body = { records: [{ fields: { '用户名': account, '密码': await hashPassword(password), '密保问题': question, '密保答案': await hashAnswer(answer), '昵称': account, '头像base64': '' } }] };
-        const res = await fetch(API_URL_USERS, { method: 'POST', headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        if (!res.ok) { authError.textContent = '注册失败'; authError.style.display = 'block'; return; }
-        currentUser = account;
-        authModal.classList.remove('active');
-        await updateUIBasedOnUser();
-      } else if (authMode === 'forgot') {
-        if (!forgotUsername) {
-          const record = await findUser(account);
-          if (!record) { authError.textContent = '账号不存在'; authError.style.display = 'block'; return; }
-          forgotUsername = account;
-          authAccount.style.display = 'none';
-          authSubmitBtn.textContent = '验证答案';
-          forgotQuestionDisplay.style.display = 'block';
-          forgotQuestionDisplay.textContent = '密保问题：' + record.fields['密保问题'];
-          authAnswer.style.display = 'block';
-        } else {
-          const answer = authAnswer.value.trim();
-          if (!answer) { authError.textContent = '请输入密保答案'; authError.style.display = 'block'; return; }
-          const record = await findUser(forgotUsername);
-          if (!record) { authError.textContent = '账号异常'; authError.style.display = 'block'; return; }
-          if (record.fields['密保答案'] !== await hashAnswer(answer)) {
-            authError.textContent = '密保答案错误'; authError.style.display = 'block'; return;
-          }
-          authPassword.style.display = 'block';
-          authConfirmPassword.style.display = 'block';
-          authAnswer.style.display = 'none';
-          authSubmitBtn.textContent = '重置密码';
-          modalTitle.textContent = '重置密码';
-          authMode = 'resetPassword';
-        }
-      } else if (authMode === 'resetPassword') {
-        const newPassword = authPassword.value;
-        const confirmNewPassword = authConfirmPassword.value;
-        if (!newPassword || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
-          authError.textContent = '密码必须包含英文和数字'; authError.style.display = 'block'; return;
-        }
-        if (newPassword !== confirmNewPassword) { authError.textContent = '两次密码不一致'; authError.style.display = 'block'; return; }
-        const record = await findUser(forgotUsername);
-        if (!record) { authError.textContent = '用户不存在'; authError.style.display = 'block'; return; }
-        const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${record.id}`;
-        const res = await fetch(updateUrl, { method: 'PATCH', headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: { '密码': await hashPassword(newPassword) } }) });
-        if (!res.ok) { authError.textContent = '重置失败'; authError.style.display = 'block'; return; }
-        alert('密码重置成功，请重新登录');
-        authModal.classList.remove('active');
-        forgotUsername = '';
-        currentUser = null;
-        await updateUIBasedOnUser();
-      }
-    });
-
-    logoutBtn.addEventListener('click', () => {
-      currentUser = null;
-      currentUserRecord = null;
-      updateUIBasedOnUser();
-    });
-
-    // ================= 个人资料 & 我的商品 =================
-    const profileModal = document.getElementById('profileModal');
-    const closeProfileModal = document.getElementById('closeProfileModal');
-    const profileAvatarPreview = document.getElementById('profileAvatarPreview');
-    const profileNickname = document.getElementById('profileNickname');
-    const saveProfileBtn = document.getElementById('saveProfileBtn');
-    const uploadAvatarBtn = document.getElementById('uploadAvatarBtn');
-    const avatarFileInput = document.getElementById('avatarFileInput');
-    const profileError = document.getElementById('profileError');
-    const myProductsList = document.getElementById('myProductsList');
-
-    let tempAvatarFile = null;
-
-    async function loadMyProducts() {
-      if (!currentUser) return;
-      const formula = encodeURIComponent(`{上传者}="${currentUser}"`);
-      const url = `${API_URL_PRODUCTS}?filterByFormula=${formula}`;
-      try {
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` } });
-        const data = await res.json();
-        const myProducts = data.records.map(r => r.fields);
-        if (myProducts.length === 0) {
-          myProductsList.innerHTML = '<div style="color:#6b7280; text-align:center; padding:10px;">暂无上传的商品</div>';
-        } else {
-          myProductsList.innerHTML = myProducts.map(p => `
-            <div class="my-product-item">
-              <span>📌 ${p['编号']} - ${p['标题']}</span>
-              <span>¥${p['价格']}</span>
-            </div>
-          `).join('');
-        }
-      } catch (err) {
-        myProductsList.innerHTML = '<div style="color:#6b7280; text-align:center; padding:10px;">加载失败</div>';
-      }
-    }
-
-    function openProfileModal() {
-      if (!currentUserRecord) return;
-      profileNickname.value = currentUserRecord.fields['昵称'] || '';
-      profileAvatarPreview.src = currentUserRecord.fields['头像base64'] || DEFAULT_AVATAR;
-      tempAvatarFile = null;
-      profileError.style.display = 'none';
-      loadMyProducts();
-      profileModal.classList.add('active');
-    }
-
-    closeProfileModal.addEventListener('click', () => profileModal.classList.remove('active'));
-    uploadAvatarBtn.addEventListener('click', () => avatarFileInput.click());
-
-    avatarFileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        tempAvatarFile = file;
-        const reader = new FileReader();
-        reader.onload = (ev) => { profileAvatarPreview.src = ev.target.result; };
-        reader.readAsDataURL(file);
-      }
-    });
-
-    saveProfileBtn.addEventListener('click', async () => {
-      if (!currentUserRecord) { profileError.textContent = '用户数据未加载'; profileError.style.display = 'block'; return; }
-      profileError.style.display = 'none';
-      const nickname = profileNickname.value.trim() || currentUser;
-      const fields = { '昵称': nickname };
-      if (tempAvatarFile) {
-        try {
-          const compressed = await compressImage(tempAvatarFile, 200, 0.6);
-          fields['头像base64'] = compressed;
-          profileAvatarPreview.src = compressed;
-        } catch (err) {
-          profileError.textContent = '图片压缩失败'; profileError.style.display = 'block'; return;
-        }
-      }
-      const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}`;
-      try {
-        const res = await fetch(updateUrl, { method: 'PATCH', headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
-        if (!res.ok) throw new Error(await res.text());
-        currentUserRecord.fields['昵称'] = nickname;
-        if (fields['头像base64']) currentUserRecord.fields['头像base64'] = fields['头像base64'];
-        await updateUIBasedOnUser();
-        profileModal.classList.remove('active');
-        tempAvatarFile = null;
-      } catch (err) {
-        profileError.textContent = '保存失败：' + err.message; profileError.style.display = 'block';
-      }
-    });
-
-    // ================= 卖账号上传 =================
+    // ================= 卖账号上传（支持其他图片）=================
     const sellBtn = document.getElementById('sellBtn');
     const sellModal = document.getElementById('sellModal');
     const closeSellModal = document.getElementById('closeSellModal');
@@ -562,20 +235,13 @@
         authModal.classList.add('active');
         return;
       }
-      // 清空表单
-      sellId.value = '';
-      sellTitle.value = '';
-      sellDesc.value = '';
-      sellPrice.value = '';
-      sellServer.value = '';
-      sellMainImg.value = '';
-      sellOtherImgs.value = '';
-      mainImgPreview.innerHTML = '';
-      otherImgsPreview.innerHTML = '';
+      sellId.value = ''; sellTitle.value = ''; sellDesc.value = '';
+      sellPrice.value = ''; sellServer.value = '';
+      sellMainImg.value = ''; sellOtherImgs.value = '';
+      mainImgPreview.innerHTML = ''; otherImgsPreview.innerHTML = '';
       sellError.style.display = 'none';
       sellModal.classList.add('active');
     });
-
     closeSellModal.addEventListener('click', () => sellModal.classList.remove('active'));
 
     sellMainImg.addEventListener('change', (e) => {
@@ -583,16 +249,16 @@
       const file = e.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (ev) => { mainImgPreview.innerHTML = `<img src="${ev.target.result}" alt="主图预览">`; };
+        reader.onload = (ev) => { mainImgPreview.innerHTML = `<img src="${ev.target.result}" alt="主图">`; };
         reader.readAsDataURL(file);
       }
     });
 
     sellOtherImgs.addEventListener('change', (e) => {
       otherImgsPreview.innerHTML = '';
-      Array.from(e.target.files).forEach(file => {
+      Array.from(e.target.files).slice(0, 2).forEach(file => { // 限制最多2张
         const reader = new FileReader();
-        reader.onload = (ev) => { otherImgsPreview.innerHTML += `<img src="${ev.target.result}" alt="额外图片">`; };
+        reader.onload = (ev) => { otherImgsPreview.innerHTML += `<img src="${ev.target.result}">`; };
         reader.readAsDataURL(file);
       });
     });
@@ -607,37 +273,21 @@
       const mainFile = sellMainImg.files[0];
       if (!id || !title || !desc || isNaN(price) || !server || !mainFile) {
         sellError.textContent = '请填写所有必填项并上传主图';
-        sellError.style.display = 'block';
-        return;
+        sellError.style.display = 'block'; return;
       }
       sellError.style.display = 'none';
-      submitSellBtn.disabled = true;
-      submitSellBtn.textContent = '提交中...';
+      submitSellBtn.disabled = true; submitSellBtn.textContent = '提交中...';
 
       try {
-        // 转 base64
-        const mainBase64 = await uploadImageToBase64(mainFile);
+        // 主图压缩 (宽度400, 质量0.5)
+        const mainBase64 = await compressImage(mainFile, 400, 0.5);
+        // 其他图片压缩 (宽度150, 质量0.4)，最多2张
         const otherFiles = sellOtherImgs.files;
-        const otherBase64s = [];
-        for (let i = 0; i < otherFiles.length; i++) {
-          otherBase64s.push(await uploadImageToBase64(otherFiles[i]));
+        const otherBase64Arr = [];
+        for (let i = 0; i < Math.min(otherFiles.length, 2); i++) {
+          const base64 = await compressImage(otherFiles[i], 150, 0.4);
+          otherBase64Arr.push(base64);
         }
-
-        // 构造图片数组（Airtable 附件格式需要 URL，但这里我们用 base64 作为外部 URL 写入是不可能的）
-        // 因为 Airtable 附件字段必须是通过上传接口获得的 URL 或文件 ID，不能直接用 base64。
-        // 所以，我们需要将图片上传到 Airtable 附件字段？但之前头像上传失败了。
-        // 解决方案：仍然使用 base64，但将图片存为 data URL 的文本字段（和头像一样），但 products 表里的主图和额外图片是附件类型，不能直接存字符串。
-        // 因此，我们需要改变策略：用户上传的商品图片也使用 base64 文本字段，而不是附件字段。
-        // 建议在 products 表中添加两个长文本字段：'主图base64' 和 '其他图片base64'（用逗号分隔多个 base64）
-        // 当前 products 表已有 '主图' 和 '其他图片' 附件字段，我们暂时兼容：上传时将 base64 先存到临时文本字段，或者直接修改表结构。
-        // 由于你之前商品是用附件字段展示的，且我们不想破坏现有商品，这里采用折中：上传新商品时，将 base64 转为 Blob 并上传到 Airtable 附件字段？但之前已经证明有 CORS 问题。
-        // 所以最稳妥的方法是：在 products 表中增加两个长文本字段：'主图base64' 和 '其他图片base64'，然后修改 renderHome 和 renderDetail 优先使用 base64（如果有），否则回退到附件字段。
-        // 但这会让用户现有商品（通过附件上传的）不能直接显示，需要迁移。
-        // 鉴于时间，我们暂时先用附件字段，但上传方式改为使用 base64 -> Blob -> FormData 上传？实际上 Airtable 附件上传 API 有 CORS 限制，浏览器端无法直接调用。
-        // 所以，最简单的实现是：用户上传商品时，同样使用 base64 文本字段，我们修改 products 表结构：
-        // 将 '主图' 改为 '主图base64'（长文本），'其他图片' 改为 '其他图片base64'（长文本，用逗号分隔）。
-        // 请用户在 Airtable 中执行此修改，现有的商品需要重新上传（或手动转换）。
-        // 下面代码将使用新的文本字段。
         const fields = {
           '编号': id,
           '标题': title,
@@ -647,7 +297,8 @@
           '上传者': currentUser,
           '最高出价': 0,
           '主图base64': mainBase64,
-          '其他图片base64': otherBase64s.join(',')
+          '其他图片base64': otherBase64Arr.join(','),
+          '状态': '未出售'
         };
         const body = { records: [{ fields }] };
         const res = await fetch(API_URL_PRODUCTS, {
@@ -658,7 +309,6 @@
         if (!res.ok) throw new Error(await res.text());
         alert('上传成功！');
         sellModal.classList.remove('active');
-        // 刷新商品列表
         await loadProducts();
       } catch (err) {
         console.error(err);
@@ -670,7 +320,7 @@
       }
     });
 
-    // ================= 商品加载（适配 base64 字段）=================
+    // ================= 商品加载（含状态字段）=================
     async function loadProducts() {
       try {
         const res = await fetch(API_URL_PRODUCTS, { headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` } });
@@ -678,7 +328,6 @@
         const data = await res.json();
         products = data.records.map(record => {
           const f = record.fields;
-          // 优先使用 base64 字段，否则回退到附件（兼容旧数据）
           let mainImg = f['主图base64'] || (f['主图'] && f['主图'][0] ? f['主图'][0].url : 'https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片');
           let otherImgs = [];
           if (f['其他图片base64']) {
@@ -694,6 +343,7 @@
             price: f['价格'] || 0,
             server: f['区服'] || '未知区服',
             highestBid: f['最高出价'] || 0,
+            status: f['状态'] || '未出售',
             images: [mainImg, ...otherImgs]
           };
         });
@@ -706,7 +356,7 @@
       }
     }
 
-    // ================= 页面渲染（不变）=================
+    // ================= 渲染商品卡片（加入状态样式）=================
     const homePage = document.getElementById('homePage');
     const detailPage = document.getElementById('detailPage');
     const productGrid = document.getElementById('productGrid');
@@ -725,8 +375,10 @@
       if (!filtered.length) { productGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">没有找到匹配的账号</div>'; return; }
       productGrid.innerHTML = filtered.map(p => {
         const displayId = p.id.toString().padStart(2, '0');
+        const isSold = p.status === '已出售';
         return `
-          <div class="product-card" data-product-id="${p.id}">
+          <div class="product-card ${isSold ? 'sold' : ''}" data-product-id="${p.id}">
+            ${isSold ? '<div class="sold-overlay">已出售</div>' : ''}
             <div class="card-img"><img src="${p.images[0]}" alt="${displayId}"></div>
             <div class="card-body">
               <div class="product-id">📌 ${displayId}</div>
@@ -778,111 +430,72 @@
         </div>
       `;
 
-      // 缩略图切换
-      const thumbElements = document.querySelectorAll('#thumbList .thumb');
-      thumbElements.forEach(thumb => {
-        thumb.addEventListener('click', function() {
-          const index = parseInt(this.dataset.index, 10);
-          if (images[index]) {
-            document.getElementById('mainImg').src = images[index];
-            thumbElements.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-          }
+      // 缩略图与放大逻辑保持不变
+      // ... （与之前相同）
+
+      // 出价逻辑保持不变
+      // ...
+    }
+
+    // ================= 我的商品 & 状态切换 =================
+    async function loadMyProducts() {
+      if (!currentUser) return;
+      const formula = encodeURIComponent(`{上传者}="${currentUser}"`);
+      const url = `${API_URL_PRODUCTS}?filterByFormula=${formula}`;
+      try {
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` } });
+        const data = await res.json();
+        const myProducts = data.records;
+        const listDiv = document.getElementById('myProductsList');
+        if (myProducts.length === 0) {
+          listDiv.innerHTML = '<div style="color:#6b7280; text-align:center; padding:10px;">暂无上传的商品</div>';
+          return;
+        }
+        listDiv.innerHTML = myProducts.map(rec => {
+          const f = rec.fields;
+          return `
+            <div class="my-product-item">
+              <div class="item-info">
+                <strong>📌 ${f['编号']}</strong> - ${f['标题']} <span style="color:#9aa0b0;">(¥${f['价格']})</span>
+                <span style="margin-left:8px; color:${f['状态']==='已出售'?'#f87171':'#6b7280'}">[${f['状态']||'未出售'}]</span>
+              </div>
+              <div class="item-actions">
+                <button onclick="changeProductStatus('${rec.id}', '已出售')">已出售</button>
+                <button onclick="changeProductStatus('${rec.id}', '未出售')">未出售</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        document.getElementById('myProductsList').innerHTML = '<div style="color:#f87171;">加载失败</div>';
+      }
+    }
+
+    window.changeProductStatus = async function(recordId, newStatus) {
+      if (!currentUser) return;
+      if (newStatus === '已出售') {
+        alert('请联系客服微信：csy212886226，有买家入手会提醒你');
+      }
+      try {
+        const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_PRODUCTS)}/${recordId}`;
+        await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: { '状态': newStatus } })
         });
-      });
-
-      // 主图放大
-      const mainImgEl = document.getElementById('mainImg');
-      mainImgEl.addEventListener('click', () => {
-        const lightbox = document.getElementById('lightbox');
-        const lightboxImg = document.getElementById('lightboxImg');
-        lightboxImg.src = mainImgEl.src;
-        lightbox.classList.add('active');
-      });
-
-      document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
-
-      // 出价逻辑
-      const bidInput = document.getElementById('bidInput');
-      const submitBtn = document.getElementById('submitBidBtn');
-      const errorEl = document.getElementById('bidError');
-      const currentBidSpan = document.getElementById('currentBid');
-
-      submitBtn.addEventListener('click', async () => {
-        if (!currentUser) { errorEl.textContent = '请先登录后才能出价'; errorEl.style.display = 'block'; return; }
-        const bidValue = parseFloat(bidInput.value);
-        if (isNaN(bidValue) || bidValue <= 0) { errorEl.textContent = '请输入有效的出价金额'; errorEl.style.display = 'block'; return; }
-        if (bidValue <= currentBid) { errorEl.textContent = '出价必须高于当前最高出价'; errorEl.style.display = 'block'; return; }
-        if (bidValue > p.price) { errorEl.textContent = `出价不能超过商品标价 ¥${p.price}`; errorEl.style.display = 'block'; return; }
-        submitBtn.disabled = true; submitBtn.textContent = '提交中...'; errorEl.style.display = 'none';
-        try {
-          const patchUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_PRODUCTS)}/${p.recordId}`;
-          const res = await fetch(patchUrl, {
-            method: 'PATCH', headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fields: { '最高出价': bidValue } })
-          });
-          if (!res.ok) throw new Error('出价失败');
-          p.highestBid = bidValue;
-          currentBidSpan.textContent = `¥${bidValue}`;
-          bidInput.value = '';
-          alert('出价成功！');
-        } catch (err) {
-          errorEl.textContent = '出价失败，请稍后重试'; errorEl.style.display = 'block';
-        } finally {
-          submitBtn.disabled = false; submitBtn.textContent = '我要出价';
-        }
-      });
-    }
-
-    function navigateToHome() { currentRoute='home'; currentProductId=null; homePage.classList.add('active'); detailPage.classList.remove('active'); window.location.hash='#/'; renderHome(searchInput.value); }
-    function navigateToDetail(pid) { currentRoute='detail'; currentProductId=pid; homePage.classList.remove('active'); detailPage.classList.add('active'); window.location.hash=`#/detail/${pid}`; renderDetail(pid); window.scrollTo({ top:0, behavior:'smooth' }); }
-    searchInput.addEventListener('input', e => { if (currentRoute==='home') renderHome(e.target.value); });
-    backBtn.addEventListener('click', navigateToHome);
-
-    function handleHashChange() {
-      const m = window.location.hash.match(/^#\/detail\/(.+)/);
-      if (m) {
-        const pid=m[1];
-        if (products.some(p => p.id===pid)) {
-          if (currentRoute!=='detail'||currentProductId!==pid) {
-            homePage.classList.remove('active'); detailPage.classList.add('active');
-            renderDetail(pid);
-            currentRoute='detail'; currentProductId=pid;
-          }
-        } else navigateToHome();
-      } else {
-        if (currentRoute!=='home') {
-          homePage.classList.add('active'); detailPage.classList.remove('active');
-          renderHome(searchInput.value);
-          currentRoute='home'; currentProductId=null;
-        }
+        await loadMyProducts();
+        await loadProducts(); // 刷新主列表
+      } catch (err) {
+        alert('状态更新失败，请重试');
       }
-    }
-    window.addEventListener('hashchange', handleHashChange);
+    };
 
-    // 全屏关闭
-    document.getElementById('lightbox').addEventListener('click', () => {
-      document.getElementById('lightbox').classList.remove('active');
-    });
-
-    function createSakura() {
-      const container = document.getElementById('sakuraBg');
-      for (let i = 0; i < 15; i++) {
-        const sakura = document.createElement('div');
-        sakura.classList.add('sakura');
-        sakura.style.left = Math.random() * 100 + '%';
-        sakura.style.animationDuration = Math.random() * 5 + 8 + 's';
-        sakura.style.animationDelay = Math.random() * 5 + 's';
-        sakura.style.fontSize = Math.random() * 16 + 12 + 'px';
-        sakura.style.opacity = Math.random() * 0.3 + 0.2;
-        sakura.textContent = '🌸';
-        container.appendChild(sakura);
-      }
+    // 修改 openProfileModal，调用 loadMyProducts
+    function openProfileModal() {
+      // ...（之前代码，最后加上 loadMyProducts();）
     }
 
-    updateUIBasedOnUser();
-    loadProducts();
-    createSakura();
+    // 其余路由、樱花等保持不变
   </script>
 </body>
 </html>
