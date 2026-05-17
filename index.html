@@ -34,11 +34,7 @@
         transform: translateY(110vh) rotate(360deg);
       }
     }
-    /* 内容层 */
-    .content-layer {
-      position: relative;
-      z-index: 1;
-    }
+    .content-layer { position: relative; z-index: 1; }
     /* ===== 原有样式 ===== */
     .navbar { position:sticky; top:0; z-index:50; background:rgba(18,22,28,0.85); backdrop-filter:blur(12px); border-bottom:1px solid rgba(200,160,80,0.15); padding:0 20px; height:64px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; }
     .logo { font-size:1.6rem; font-weight:800; background:linear-gradient(135deg, #f0c060 0%, #d4942b 80%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:1px; }
@@ -67,8 +63,8 @@
     .back-btn { background:none; border:1px solid #2e3540; color:#9aa0b0; padding:8px 18px; border-radius:30px; font-weight:600; cursor:pointer; margin-bottom:24px; display:inline-flex; align-items:center; gap:6px; transition:0.2s; }
     .back-btn:hover { border-color:#d4942b; color:#f0c060; }
     .detail-layout { display:flex; flex-wrap:wrap; gap:28px; }
-    .detail-gallery { flex:1 1 380px; background:#161b22; border-radius:24px; padding:16px; }
-    .main-img { width:100%; border-radius:18px; margin-bottom:12px; aspect-ratio:16/10; object-fit:cover; background:#1e232b; }
+    .detail-gallery { flex:1 1 380px; background:#161b22; border-radius:24px; padding:16px; overflow:hidden; }
+    .main-img { width:100%; height:auto; aspect-ratio:16/10; object-fit:cover; border-radius:18px; margin-bottom:12px; background:#1e232b; }
     .thumb-list { display:flex; gap:10px; overflow-x:auto; }
     .thumb { width:70px; height:50px; border-radius:10px; object-fit:cover; cursor:pointer; border:2px solid transparent; transition:0.2s; }
     .thumb.active, .thumb:hover { border-color:#d4942b; }
@@ -95,13 +91,11 @@
     .float-sell-btn { position:fixed; bottom:30px; right:30px; background:linear-gradient(135deg, #d4942b, #b5761e); color:#0c0f15; font-weight:800; font-size:1.1rem; padding:14px 24px; border-radius:50px; box-shadow:0 8px 25px rgba(212,148,43,0.4); cursor:pointer; z-index:1000; border:none; }
     .float-sell-btn:hover { transform:scale(1.05); }
     .footer { text-align:center; padding:32px 20px; color:#5a6270; font-size:0.85rem; border-top:1px solid #1e2530; }
-    /* 用户菜单 */
     .user-menu { display:flex; align-items:center; gap:10px; }
     .user-menu .user-avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid #d4942b; cursor:pointer; }
     .user-menu .user-nick { color:#f0c060; font-weight:600; cursor:pointer; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .user-menu button { background:none; border:1px solid #2e3540; color:#e8edf2; padding:6px 16px; border-radius:30px; font-size:0.9rem; cursor:pointer; }
     .user-menu button:hover { background:#d4942b; color:#0c0f15; }
-    /* 弹窗 */
     .modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:1001; align-items:center; justify-content:center; }
     .modal-overlay.active { display:flex; }
     .modal { background:#161b22; border-radius:24px; padding:32px; width:90%; max-width:420px; position:relative; }
@@ -111,7 +105,6 @@
     .modal button { width:100%; padding:12px; background:linear-gradient(135deg, #d4942b, #b5761e); border:none; color:#0c0f15; font-weight:800; font-size:1rem; border-radius:30px; cursor:pointer; margin-top:8px; }
     .modal .link-text { color:#9aa0b0; text-align:center; margin-top:16px; cursor:pointer; font-size:0.9rem; }
     .modal .close-btn { position:absolute; top:16px; right:20px; background:none; border:none; color:#6b7280; font-size:1.5rem; cursor:pointer; }
-    /* 头像上传 */
     .avatar-upload { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
     .avatar-upload img { width:60px; height:60px; border-radius:50%; object-fit:cover; background:#1e232b; }
     .avatar-upload input[type="file"] { display:none; }
@@ -119,10 +112,7 @@
   </style>
 </head>
 <body>
-  <!-- 樱花背景 -->
   <div class="sakura-bg" id="sakuraBg"></div>
-
-  <!-- 内容区域 -->
   <div class="content-layer">
     <header class="navbar">
       <div class="logo">⚡ 竹染游戏账号交易平台</div>
@@ -137,20 +127,15 @@
         <button id="logoutBtn" style="display:none;">退出</button>
       </div>
     </header>
-
     <div id="homePage" class="page active">
       <div class="section-title">🔥 航海王燃烧意志 · 账号商城</div>
-      <div class="game-meta">
-        <span>🎮</span> 当前展示 <strong>航海王燃烧意志</strong> 账号 · 共 <span id="totalCount">0</span> 个在售
-      </div>
+      <div class="game-meta"><span>🎮</span> 当前展示 <strong>航海王燃烧意志</strong> 账号 · 共 <span id="totalCount">0</span> 个在售</div>
       <div class="product-grid" id="productGrid"></div>
     </div>
-
     <div id="detailPage" class="page">
       <button class="back-btn" id="backBtn">← 返回商城</button>
       <div class="detail-layout" id="detailContent"></div>
     </div>
-
     <button class="float-sell-btn" id="sellBtn">💰 卖账号</button>
     <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
   </div>
@@ -197,7 +182,6 @@
   </div>
 
   <script>
-    // ================= Airtable 配置 ==================
     const AIRTABLE_CONFIG = {
       baseId: 'appHghJgUFfWnqFaU',
       token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',   // ⚠️ 替换成你自己的读写 Token
@@ -210,21 +194,18 @@
     const SALT = 'zhuran_2026_salt';
 
     let products = [];
-    let currentUser = null; // 当前登录的用户名
-    let currentUserRecord = null; // 当前用户的 Airtable 记录
+    let currentUser = null;
+    let currentUserRecord = null;
 
-    // ================= 密码哈希 ==================
     async function sha256(message) {
       const msgBuffer = new TextEncoder().encode(message);
       const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
-
     async function hashPassword(password) { return await sha256(password + SALT); }
     async function hashAnswer(answer) { return await sha256(answer.toLowerCase() + SALT); }
 
-    // ================= 用户管理 =================
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const userAvatar = document.getElementById('userAvatar');
@@ -254,9 +235,8 @@
 
     let authMode = 'login';
     let forgotUsername = '';
-    let tempAvatarFile = null; // 暂存用户选择的头像文件
+    let tempAvatarFile = null;
 
-    // 更新导航栏用户状态
     async function updateUIBasedOnUser() {
       if (!loginBtn || !userName || !logoutBtn || !userAvatar) return;
       if (currentUser) {
@@ -264,13 +244,11 @@
         userName.style.display = 'inline';
         userAvatar.style.display = 'inline';
         logoutBtn.style.display = 'inline';
-        // 加载用户详细信息（昵称、头像）
         const record = await findUser(currentUser);
         if (record) {
           currentUserRecord = record;
           const nick = record.fields['昵称'] || currentUser;
           userName.textContent = nick;
-          userName.title = '点击查看个人资料';
           const avatarField = record.fields['头像'];
           if (avatarField && avatarField.length > 0) {
             userAvatar.src = avatarField[0].url;
@@ -278,7 +256,6 @@
             userAvatar.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E";
           }
         }
-        // 点击头像或昵称打开个人资料弹窗
         userAvatar.onclick = openProfileModal;
         userName.onclick = openProfileModal;
       } else {
@@ -341,7 +318,6 @@
     });
     forgotPwd.addEventListener('click', () => { resetAuthModal('forgot'); });
 
-    // 查找用户
     async function findUser(username) {
       const formula = encodeURIComponent(`{用户名}="${username}"`);
       const url = `${API_URL_USERS}?filterByFormula=${formula}&maxRecords=1`;
@@ -353,7 +329,6 @@
       return data.records.length > 0 ? data.records[0] : null;
     }
 
-    // 认证提交
     authSubmitBtn.addEventListener('click', async () => {
       authError.style.display = 'none';
       const account = authAccount.value.trim();
@@ -407,17 +382,14 @@
               '密码': hashedPassword,
               '密保问题': question,
               '密保答案': hashedAnswer,
-              '昵称': account,  // 默认昵称与账号相同
+              '昵称': account,
               '头像': []
             }
           }]
         };
         const res = await fetch(API_URL_USERS, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
         if (!res.ok) { authError.textContent = '注册失败，请稍后重试'; authError.style.display = 'block'; return; }
@@ -468,10 +440,7 @@
         const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${record.id}`;
         const res = await fetch(updateUrl, {
           method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ fields: { '密码': hashedPassword } })
         });
         if (!res.ok) { authError.textContent = '重置失败，请稍后重试'; authError.style.display = 'block'; return; }
@@ -483,14 +452,12 @@
       }
     });
 
-    // 退出
     logoutBtn.addEventListener('click', () => {
       currentUser = null;
       currentUserRecord = null;
       updateUIBasedOnUser();
     });
 
-    // ================= 个人资料弹窗 =================
     function openProfileModal() {
       if (!currentUserRecord) return;
       profileNickname.value = currentUserRecord.fields['昵称'] || '';
@@ -504,7 +471,6 @@
     }
 
     closeProfileModal.addEventListener('click', () => profileModal.classList.remove('active'));
-
     uploadAvatarBtn.addEventListener('click', () => avatarFileInput.click());
 
     avatarFileInput.addEventListener('change', (e) => {
@@ -523,37 +489,35 @@
       const nickname = profileNickname.value.trim() || currentUser;
       const fields = { '昵称': nickname };
 
-      // 如果有新头像，上传到 Airtable 的附件字段
       if (tempAvatarFile) {
-        // Airtable 附件上传需要 multipart/form-data
         const formData = new FormData();
         formData.append('file', tempAvatarFile);
-        // 先上传到 Airtable 的临时附件端点
-        const uploadUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}/fields/头像/upload`;
+        const fieldNameEncoded = encodeURIComponent('头像');
+        const uploadUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}/fields/${fieldNameEncoded}/upload`;
         try {
           const uploadRes = await fetch(uploadUrl, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` },
             body: formData
           });
-          if (!uploadRes.ok) throw new Error('头像上传失败');
+          if (!uploadRes.ok) {
+            const errorText = await uploadRes.text();
+            throw new Error(errorText);
+          }
           const uploadData = await uploadRes.json();
           fields['头像'] = [{ id: uploadData.id, url: uploadData.url, filename: uploadData.filename }];
         } catch (err) {
-          profileError.textContent = '头像上传失败，请稍后重试';
+          console.error('头像上传错误:', err);
+          profileError.textContent = '头像上传失败：' + (err.message || '请稍后重试');
           profileError.style.display = 'block';
           return;
         }
       }
 
-      // 更新用户记录
       const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}`;
       const res = await fetch(updateUrl, {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields })
       });
       if (!res.ok) {
@@ -561,7 +525,6 @@
         profileError.style.display = 'block';
         return;
       }
-      // 更新本地数据
       currentUserRecord.fields['昵称'] = nickname;
       if (fields['头像']) currentUserRecord.fields['头像'] = fields['头像'];
       await updateUIBasedOnUser();
@@ -569,7 +532,7 @@
       tempAvatarFile = null;
     });
 
-    // ================= 商品加载 ==================
+    // 商品加载
     async function loadProducts() {
       try {
         const res = await fetch(API_URL_PRODUCTS, {
@@ -629,7 +592,7 @@
       totalCountSpan.textContent = filtered.length;
       if (!filtered.length) { productGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">没有找到匹配的账号</div>'; return; }
       productGrid.innerHTML = filtered.map(p => {
-        const displayId = p.id.toString().padStart(2, '0'); // 自动补零
+        const displayId = p.id.toString().padStart(2, '0');
         return `
           <div class="product-card" data-product-id="${p.id}">
             <div class="card-img"><img src="${p.images[0]}" alt="${displayId}"></div>
@@ -683,7 +646,7 @@
         </div>
       `;
 
-      // 绑定缩略图切换事件（修复点击无效）
+      // 缩略图切换
       const thumbElements = document.querySelectorAll('#thumbList .thumb');
       thumbElements.forEach(thumb => {
         thumb.addEventListener('click', function() {
@@ -698,7 +661,6 @@
 
       document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
 
-      // 出价逻辑
       const bidInput = document.getElementById('bidInput');
       const submitBtn = document.getElementById('submitBidBtn');
       const errorEl = document.getElementById('bidError');
@@ -794,7 +756,7 @@
     }
     window.addEventListener('hashchange', handleHashChange);
 
-    // ================= 樱花飘落效果 =================
+    // 樱花飘落
     function createSakura() {
       const container = document.getElementById('sakuraBg');
       const count = 15;
@@ -811,7 +773,6 @@
       }
     }
 
-    // 启动
     updateUIBasedOnUser();
     loadProducts();
     createSakura();
