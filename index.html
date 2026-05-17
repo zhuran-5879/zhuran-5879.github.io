@@ -6,11 +6,7 @@
   <title>竹染游戏账号交易平台</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif;
-      background:#0c0f15; color:#e8edf2; min-height:100vh;
-      position: relative; overflow-x: hidden;
-    }
+    body { font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif; background:#0c0f15; color:#e8edf2; min-height:100vh; position:relative; overflow-x:hidden; }
     .sakura-bg { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:0.5; }
     .sakura { position:absolute; top:-10%; animation:fall linear infinite; opacity:0.6; }
     @keyframes fall { to { transform:translateY(110vh) rotate(360deg); } }
@@ -166,6 +162,8 @@
     const API_URL_USERS = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}`;
 
     const SALT = 'zhuran_2026_salt';
+    const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E";
+
     let products = [];
     let currentUser = null;
     let currentUserRecord = null;
@@ -208,8 +206,9 @@
 
     let authMode = 'login';
     let forgotUsername = '';
-    let tempAvatarFile = null;
+    let tempAvatarBase64 = null; // 暂存选中的头像 base64
 
+    // 更新导航栏
     async function updateUIBasedOnUser() {
       if (!loginBtn || !userName || !logoutBtn || !userAvatar) return;
       if (currentUser) {
@@ -222,12 +221,8 @@
           currentUserRecord = record;
           const nick = record.fields['昵称'] || currentUser;
           userName.textContent = nick;
-          const avatarField = record.fields['头像'];
-          if (avatarField && avatarField.length > 0) {
-            userAvatar.src = avatarField[0].url;
-          } else {
-            userAvatar.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E";
-          }
+          const avatarBase64 = record.fields['头像base64'] || '';
+          userAvatar.src = avatarBase64 || DEFAULT_AVATAR;
         }
         userAvatar.onclick = openProfileModal;
         userName.onclick = openProfileModal;
@@ -355,7 +350,7 @@
               '密保问题': question,
               '密保答案': hashedAnswer,
               '昵称': account,
-              '头像': []
+              '头像base64': ''
             }
           }]
         };
@@ -429,18 +424,17 @@
       updateUIBasedOnUser();
     });
 
+    // 打开个人资料弹窗
     function openProfileModal() {
       if (!currentUserRecord) {
         alert('用户信息加载中，请稍后再试');
         return;
       }
       profileNickname.value = currentUserRecord.fields['昵称'] || '';
-      const avatar = currentUserRecord.fields['头像'];
-      if (avatar && avatar.length > 0) {
-        profileAvatarPreview.src = avatar[0].url;
-      } else {
-        profileAvatarPreview.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E";
-      }
+      const avatarBase64 = currentUserRecord.fields['头像base64'] || '';
+      profileAvatarPreview.src = avatarBase64 || DEFAULT_AVATAR;
+      tempAvatarBase64 = null; // 重置临时头像
+      profileError.style.display = 'none';
       profileModal.classList.add('active');
     }
 
@@ -450,13 +444,17 @@
     avatarFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
-        tempAvatarFile = file;
         const reader = new FileReader();
-        reader.onload = (ev) => { profileAvatarPreview.src = ev.target.result; };
+        reader.onload = (ev) => {
+          const base64 = ev.target.result; // data:image/...
+          tempAvatarBase64 = base64;
+          profileAvatarPreview.src = base64;
+        };
         reader.readAsDataURL(file);
       }
     });
 
+    // 保存个人资料（昵称 + 头像分开处理）
     saveProfileBtn.addEventListener('click', async () => {
       if (!currentUserRecord) {
         profileError.textContent = '用户数据未加载';
@@ -467,52 +465,36 @@
       const nickname = profileNickname.value.trim() || currentUser;
       const fields = { '昵称': nickname };
 
-      if (tempAvatarFile) {
-        const formData = new FormData();
-        formData.append('file', tempAvatarFile);
-        const fieldNameEncoded = encodeURIComponent('头像');
-        const uploadUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}/fields/${fieldNameEncoded}/upload`;
-        try {
-          const uploadRes = await fetch(uploadUrl, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` },
-            body: formData
-            // 注意：不要手动设置 Content-Type，浏览器会自动添加 boundary
-          });
-          if (!uploadRes.ok) {
-            const errorText = await uploadRes.text();
-            throw new Error(`状态 ${uploadRes.status}: ${errorText}`);
-          }
-          const uploadData = await uploadRes.json();
-          fields['头像'] = [{ id: uploadData.id, url: uploadData.url, filename: uploadData.filename }];
-        } catch (err) {
-          console.error('头像上传异常：', err);
-          profileError.textContent = '头像上传失败：' + err.message;
-          profileError.style.display = 'block';
-          return;
-        }
+      // 如果有新头像，将 base64 放入字段
+      if (tempAvatarBase64) {
+        fields['头像base64'] = tempAvatarBase64;
       }
 
       const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}`;
-      const res = await fetch(updateUrl, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields })
-      });
-      if (!res.ok) {
-        const errorText = await res.text();
-        profileError.textContent = '保存失败：' + errorText;
+      try {
+        const res = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields })
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText);
+        }
+        // 更新本地缓存
+        currentUserRecord.fields['昵称'] = nickname;
+        if (fields['头像base64']) currentUserRecord.fields['头像base64'] = fields['头像base64'];
+        await updateUIBasedOnUser();
+        profileModal.classList.remove('active');
+        tempAvatarBase64 = null;
+      } catch (err) {
+        console.error(err);
+        profileError.textContent = '保存失败：' + err.message;
         profileError.style.display = 'block';
-        return;
       }
-      currentUserRecord.fields['昵称'] = nickname;
-      if (fields['头像']) currentUserRecord.fields['头像'] = fields['头像'];
-      await updateUIBasedOnUser();
-      profileModal.classList.remove('active');
-      tempAvatarFile = null;
     });
 
-    // 商品加载...
+    // ===== 商品展示等（不变） =====
     async function loadProducts() {
       try {
         const res = await fetch(API_URL_PRODUCTS, {
