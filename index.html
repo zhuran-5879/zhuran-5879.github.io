@@ -130,26 +130,24 @@
   </div>
 
   <script>
-    // ================= Supabase 配置（填你自己的）==================
+       // ================= Supabase 配置 ==================
     const SUPABASE_URL = 'https://wfqhlgfilrqpqfkuhoua.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_4zSvzBJ_l5lw2sp7s-wiHA_JqszbnTl';
-    const { createClient } = supabase;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    // =================================================================
-
-    // Airtable 配置（保持不变）
+    const { createClient } = supabase;  // 全局 supabase 是 SDK 暴露的
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // ================= Airtable 配置 ==================
     const AIRTABLE_CONFIG = {
       baseId: 'appHghJgUFfWnqFaU',
       tableName: 'products',
-      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',
+      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',  // 替换成你的读写 Token
     };
     const encodedTable = encodeURIComponent(AIRTABLE_CONFIG.tableName);
     const API_URL = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodedTable}`;
 
     let products = [];
-    let currentUser = null;  // 当前登录用户
+    let currentUser = null;
 
-    // ================= 认证相关逻辑 =================
+    // ================= 认证相关 =================
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const userName = document.getElementById('userName');
@@ -164,16 +162,17 @@
     const forgotPwd = document.getElementById('forgotPwd');
     const authError = document.getElementById('authError');
 
-    let authMode = 'login'; // 'login', 'register', 'forgot'
+    let authMode = 'login';
 
-    // 检查当前用户状态
     async function checkUser() {
-      const { data: { user } } = await supabase.auth.getUser();
+      if (!supabaseClient) return;
+      const { data: { user } } = await supabaseClient.auth.getUser();
       currentUser = user;
       updateUIBasedOnUser();
     }
 
     function updateUIBasedOnUser() {
+      if (!loginBtn || !userName || !logoutBtn) return;
       if (currentUser) {
         loginBtn.style.display = 'none';
         userName.style.display = 'inline';
@@ -186,8 +185,8 @@
       }
     }
 
-    // 重置弹窗
     function resetAuthModal(mode) {
+      if (!authError || !modalTitle || !authPassword || !authConfirmPassword || !authSubmitBtn || !toggleMode || !forgotPwd) return;
       authMode = mode;
       authError.style.display = 'none';
       if (mode === 'login') {
@@ -212,45 +211,31 @@
         toggleMode.textContent = '返回登录';
         forgotPwd.style.display = 'none';
       }
-      authEmail.value = '';
-      authPassword.value = '';
-      authConfirmPassword.value = '';
+      if (authEmail) authEmail.value = '';
+      if (authPassword) authPassword.value = '';
+      if (authConfirmPassword) authConfirmPassword.value = '';
     }
 
-    loginBtn.addEventListener('click', () => {
-      resetAuthModal('login');
-      authModal.classList.add('active');
+    if (loginBtn) loginBtn.addEventListener('click', () => { resetAuthModal('login'); authModal.classList.add('active'); });
+    if (closeModal) closeModal.addEventListener('click', () => { authModal.classList.remove('active'); });
+    if (toggleMode) toggleMode.addEventListener('click', () => {
+      if (authMode === 'login') resetAuthModal('register');
+      else if (authMode === 'register') resetAuthModal('login');
+      else if (authMode === 'forgot') resetAuthModal('login');
     });
+    if (forgotPwd) forgotPwd.addEventListener('click', () => { resetAuthModal('forgot'); });
 
-    closeModal.addEventListener('click', () => {
-      authModal.classList.remove('active');
-    });
-
-    toggleMode.addEventListener('click', () => {
-      if (authMode === 'login') {
-        resetAuthModal('register');
-      } else if (authMode === 'register') {
-        resetAuthModal('login');
-      } else if (authMode === 'forgot') {
-        resetAuthModal('login');
-      }
-    });
-
-    forgotPwd.addEventListener('click', () => {
-      resetAuthModal('forgot');
-    });
-
-    // 提交认证
     authSubmitBtn.addEventListener('click', async () => {
+      if (!authError || !authEmail) return;
       authError.style.display = 'none';
       const email = authEmail.value.trim();
-      const password = authPassword.value;
+      const password = authPassword ? authPassword.value : '';
 
       if (!email) { authError.textContent = '请输入邮箱'; authError.style.display = 'block'; return; }
 
       if (authMode === 'login') {
         if (!password) { authError.textContent = '请输入密码'; authError.style.display = 'block'; return; }
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) { authError.textContent = error.message; authError.style.display = 'block'; return; }
         currentUser = data.user;
         authModal.classList.remove('active');
@@ -259,9 +244,8 @@
         if (!password) { authError.textContent = '请输入密码'; authError.style.display = 'block'; return; }
         const confirmPassword = authConfirmPassword.value;
         if (password !== confirmPassword) { authError.textContent = '两次密码不一致'; authError.style.display = 'block'; return; }
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
         if (error) { authError.textContent = error.message; authError.style.display = 'block'; return; }
-        // 注册成功（如果开启了邮件确认，需要提示用户去确认邮箱；否则直接登录）
         if (data.user && data.session) {
           currentUser = data.user;
           authModal.classList.remove('active');
@@ -271,31 +255,26 @@
           authError.style.display = 'block';
         }
       } else if (authMode === 'forgot') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
         if (error) { authError.textContent = error.message; authError.style.display = 'block'; return; }
         authError.textContent = '已发送重置密码链接到邮箱，请查收。';
         authError.style.display = 'block';
-        // 几秒后自动关闭
         setTimeout(() => { authModal.classList.remove('active'); }, 3000);
       }
     });
 
-    logoutBtn.addEventListener('click', async () => {
-      await supabase.auth.signOut();
+    if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+      await supabaseClient.auth.signOut();
       currentUser = null;
       updateUIBasedOnUser();
     });
 
-    // 监听认证状态变化（如刷新页面后）
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabaseClient.auth.onAuthStateChange((event, session) => {
       currentUser = session?.user || null;
       updateUIBasedOnUser();
     });
 
-    // ================= 原有 Airtable 加载和渲染 =================
-    // （完全保留之前的 loadProducts, renderHome, renderDetail, 出价逻辑等，无需修改）
-    // 只需要在出价按钮前增加登录检查，我已加在下方
-
+    // ================= 原有商品加载和展示 =================
     async function loadProducts() {
       try {
         const res = await fetch(API_URL, {
@@ -334,7 +313,9 @@
     const searchInput = document.getElementById('searchInput');
     const detailContent = document.getElementById('detailContent');
     const backBtn = document.getElementById('backBtn');
-    document.getElementById('sellBtn').addEventListener('click', () => {
+    const sellBtn = document.getElementById('sellBtn');
+
+    sellBtn.addEventListener('click', () => {
       if (!currentUser) {
         alert('请先登录后再卖账号');
         resetAuthModal('login');
@@ -397,7 +378,6 @@
         </div>
       `;
 
-      // 缩略图切换
       document.querySelectorAll('#thumbList .thumb').forEach(thumb => {
         thumb.addEventListener('click', function() {
           const index = parseInt(this.dataset.index, 10);
@@ -409,11 +389,8 @@
         });
       });
 
-      document.getElementById('buyBtn').addEventListener('click', () => {
-        alert('请联系客服微信：csy212886226 完成购买');
-      });
+      document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
 
-      // 出价逻辑（检查登录）
       const bidInput = document.getElementById('bidInput');
       const submitBtn = document.getElementById('submitBidBtn');
       const errorEl = document.getElementById('bidError');
@@ -476,10 +453,29 @@
     function navigateToDetail(pid) { currentRoute='detail'; currentProductId=pid; homePage.classList.remove('active'); detailPage.classList.add('active'); window.location.hash=`#/detail/${pid}`; renderDetail(pid); window.scrollTo({top:0,behavior:'smooth'}); }
     searchInput.addEventListener('input', e => { if (currentRoute==='home') renderHome(e.target.value); });
     backBtn.addEventListener('click', navigateToHome);
+
     function handleHashChange() {
       const m = window.location.hash.match(/^#\/detail\/(.+)/);
-      if (m) { const pid=m[1]; if (products.some(p => p.id===pid)) { if (currentRoute!=='detail'||currentProductId!==pid) { homePage.classList.remove('active'); detailPage.classList.add('active'); renderDetail(pid); currentRoute='detail'; currentProductId=pid; } } else navigateToHome(); }
-      else { if (currentRoute!=='home') { homePage.classList.add('active'); detailPage.classList.remove('active'); renderHome(searchInput.value); currentRoute='home'; currentProductId=null; } }
+      if (m) {
+        const pid=m[1];
+        if (products.some(p => p.id===pid)) {
+          if (currentRoute!=='detail'||currentProductId!==pid) {
+            homePage.classList.remove('active');
+            detailPage.classList.add('active');
+            renderDetail(pid);
+            currentRoute='detail';
+            currentProductId=pid;
+          }
+        } else navigateToHome();
+      } else {
+        if (currentRoute!=='home') {
+          homePage.classList.add('active');
+          detailPage.classList.remove('active');
+          renderHome(searchInput.value);
+          currentRoute='home';
+          currentProductId=null;
+        }
+      }
     }
     window.addEventListener('hashchange', handleHashChange);
 
