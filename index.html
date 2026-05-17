@@ -9,33 +9,12 @@
     body {
       font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif;
       background:#0c0f15; color:#e8edf2; min-height:100vh;
-      position: relative;
-      overflow-x: hidden;
+      position: relative; overflow-x: hidden;
     }
-    /* ===== 樱花飘落背景 ===== */
-    .sakura-bg {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0;
-      opacity: 0.5;
-    }
-    .sakura {
-      position: absolute;
-      top: -10%;
-      animation: fall linear infinite;
-      opacity: 0.6;
-    }
-    @keyframes fall {
-      to {
-        transform: translateY(110vh) rotate(360deg);
-      }
-    }
-    .content-layer { position: relative; z-index: 1; }
-    /* ===== 原有样式 ===== */
+    .sakura-bg { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; opacity:0.5; }
+    .sakura { position:absolute; top:-10%; animation:fall linear infinite; opacity:0.6; }
+    @keyframes fall { to { transform:translateY(110vh) rotate(360deg); } }
+    .content-layer { position:relative; z-index:1; }
     .navbar { position:sticky; top:0; z-index:50; background:rgba(18,22,28,0.85); backdrop-filter:blur(12px); border-bottom:1px solid rgba(200,160,80,0.15); padding:0 20px; height:64px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; }
     .logo { font-size:1.6rem; font-weight:800; background:linear-gradient(135deg, #f0c060 0%, #d4942b 80%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:1px; }
     .search-box { display:flex; align-items:center; background:#1e232b; border:1px solid #2e3540; border-radius:40px; padding:6px 16px; width:280px; max-width:50vw; transition:border 0.2s; }
@@ -116,10 +95,7 @@
   <div class="content-layer">
     <header class="navbar">
       <div class="logo">⚡ 竹染游戏账号交易平台</div>
-      <div class="search-box">
-        <span style="font-size:1.1rem;">🔍</span>
-        <input type="text" id="searchInput" placeholder="搜索商品编号/信息……" autocomplete="off">
-      </div>
+      <div class="search-box"><span style="font-size:1.1rem;">🔍</span><input type="text" id="searchInput" placeholder="搜索商品编号/信息……" autocomplete="off"></div>
       <div class="user-menu" id="userMenu">
         <button id="loginBtn" style="display:none;">登录/注册</button>
         <img id="userAvatar" class="user-avatar" style="display:none;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E">
@@ -140,7 +116,6 @@
     <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
   </div>
 
-  <!-- 登录/注册/找回密码弹窗 -->
   <div class="modal-overlay" id="authModal">
     <div class="modal">
       <button class="close-btn" id="closeAuthModal">✕</button>
@@ -165,7 +140,6 @@
     </div>
   </div>
 
-  <!-- 个人资料弹窗 -->
   <div class="modal-overlay" id="profileModal">
     <div class="modal">
       <button class="close-btn" id="closeProfileModal">✕</button>
@@ -192,7 +166,6 @@
     const API_URL_USERS = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}`;
 
     const SALT = 'zhuran_2026_salt';
-
     let products = [];
     let currentUser = null;
     let currentUserRecord = null;
@@ -356,7 +329,6 @@
         currentUser = account;
         authModal.classList.remove('active');
         await updateUIBasedOnUser();
-
       } else if (authMode === 'register') {
         const password = authPassword.value;
         const confirmPassword = authConfirmPassword.value;
@@ -396,7 +368,6 @@
         currentUser = account;
         authModal.classList.remove('active');
         await updateUIBasedOnUser();
-
       } else if (authMode === 'forgot') {
         if (!forgotUsername) {
           const record = await findUser(account);
@@ -459,7 +430,10 @@
     });
 
     function openProfileModal() {
-      if (!currentUserRecord) return;
+      if (!currentUserRecord) {
+        alert('用户信息加载中，请稍后再试');
+        return;
+      }
       profileNickname.value = currentUserRecord.fields['昵称'] || '';
       const avatar = currentUserRecord.fields['头像'];
       if (avatar && avatar.length > 0) {
@@ -484,7 +458,11 @@
     });
 
     saveProfileBtn.addEventListener('click', async () => {
-      if (!currentUserRecord) return;
+      if (!currentUserRecord) {
+        profileError.textContent = '用户数据未加载';
+        profileError.style.display = 'block';
+        return;
+      }
       profileError.style.display = 'none';
       const nickname = profileNickname.value.trim() || currentUser;
       const fields = { '昵称': nickname };
@@ -499,16 +477,17 @@
             method: 'POST',
             headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` },
             body: formData
+            // 注意：不要手动设置 Content-Type，浏览器会自动添加 boundary
           });
           if (!uploadRes.ok) {
             const errorText = await uploadRes.text();
-            throw new Error(errorText);
+            throw new Error(`状态 ${uploadRes.status}: ${errorText}`);
           }
           const uploadData = await uploadRes.json();
           fields['头像'] = [{ id: uploadData.id, url: uploadData.url, filename: uploadData.filename }];
         } catch (err) {
-          console.error('头像上传错误:', err);
-          profileError.textContent = '头像上传失败：' + (err.message || '请稍后重试');
+          console.error('头像上传异常：', err);
+          profileError.textContent = '头像上传失败：' + err.message;
           profileError.style.display = 'block';
           return;
         }
@@ -521,7 +500,8 @@
         body: JSON.stringify({ fields })
       });
       if (!res.ok) {
-        profileError.textContent = '保存失败，请稍后重试';
+        const errorText = await res.text();
+        profileError.textContent = '保存失败：' + errorText;
         profileError.style.display = 'block';
         return;
       }
@@ -532,7 +512,7 @@
       tempAvatarFile = null;
     });
 
-    // 商品加载
+    // 商品加载...
     async function loadProducts() {
       try {
         const res = await fetch(API_URL_PRODUCTS, {
@@ -646,7 +626,6 @@
         </div>
       `;
 
-      // 缩略图切换
       const thumbElements = document.querySelectorAll('#thumbList .thumb');
       thumbElements.forEach(thumb => {
         thumb.addEventListener('click', function() {
@@ -719,19 +698,8 @@
       });
     }
 
-    function navigateToHome() {
-      currentRoute='home'; currentProductId=null;
-      homePage.classList.add('active'); detailPage.classList.remove('active');
-      window.location.hash='#/';
-      renderHome(searchInput.value);
-    }
-    function navigateToDetail(pid) {
-      currentRoute='detail'; currentProductId=pid;
-      homePage.classList.remove('active'); detailPage.classList.add('active');
-      window.location.hash=`#/detail/${pid}`;
-      renderDetail(pid);
-      window.scrollTo({ top:0, behavior:'smooth' });
-    }
+    function navigateToHome() { currentRoute='home'; currentProductId=null; homePage.classList.add('active'); detailPage.classList.remove('active'); window.location.hash='#/'; renderHome(searchInput.value); }
+    function navigateToDetail(pid) { currentRoute='detail'; currentProductId=pid; homePage.classList.remove('active'); detailPage.classList.add('active'); window.location.hash=`#/detail/${pid}`; renderDetail(pid); window.scrollTo({ top:0, behavior:'smooth' }); }
     searchInput.addEventListener('input', e => { if (currentRoute==='home') renderHome(e.target.value); });
     backBtn.addEventListener('click', navigateToHome);
 
@@ -756,7 +724,6 @@
     }
     window.addEventListener('hashchange', handleHashChange);
 
-    // 樱花飘落
     function createSakura() {
       const container = document.getElementById('sakuraBg');
       const count = 15;
