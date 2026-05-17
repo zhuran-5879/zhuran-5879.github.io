@@ -6,7 +6,40 @@
   <title>竹染游戏账号交易平台</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif; background:#0c0f15; color:#e8edf2; min-height:100vh; }
+    body {
+      font-family: 'Segoe UI', 'PingFang SC', Roboto, 'Helvetica Neue', system-ui, sans-serif;
+      background:#0c0f15; color:#e8edf2; min-height:100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    /* ===== 樱花飘落背景 ===== */
+    .sakura-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.5;
+    }
+    .sakura {
+      position: absolute;
+      top: -10%;
+      animation: fall linear infinite;
+      opacity: 0.6;
+    }
+    @keyframes fall {
+      to {
+        transform: translateY(110vh) rotate(360deg);
+      }
+    }
+    /* 内容层 */
+    .content-layer {
+      position: relative;
+      z-index: 1;
+    }
+    /* ===== 原有样式 ===== */
     .navbar { position:sticky; top:0; z-index:50; background:rgba(18,22,28,0.85); backdrop-filter:blur(12px); border-bottom:1px solid rgba(200,160,80,0.15); padding:0 20px; height:64px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; }
     .logo { font-size:1.6rem; font-weight:800; background:linear-gradient(135deg, #f0c060 0%, #d4942b 80%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; letter-spacing:1px; }
     .search-box { display:flex; align-items:center; background:#1e232b; border:1px solid #2e3540; border-radius:40px; padding:6px 16px; width:280px; max-width:50vw; transition:border 0.2s; }
@@ -62,8 +95,10 @@
     .float-sell-btn { position:fixed; bottom:30px; right:30px; background:linear-gradient(135deg, #d4942b, #b5761e); color:#0c0f15; font-weight:800; font-size:1.1rem; padding:14px 24px; border-radius:50px; box-shadow:0 8px 25px rgba(212,148,43,0.4); cursor:pointer; z-index:1000; border:none; }
     .float-sell-btn:hover { transform:scale(1.05); }
     .footer { text-align:center; padding:32px 20px; color:#5a6270; font-size:0.85rem; border-top:1px solid #1e2530; }
-    /* 用户系统 */
-    .user-menu { display:flex; align-items:center; gap:12px; }
+    /* 用户菜单 */
+    .user-menu { display:flex; align-items:center; gap:10px; }
+    .user-menu .user-avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid #d4942b; cursor:pointer; }
+    .user-menu .user-nick { color:#f0c060; font-weight:600; cursor:pointer; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .user-menu button { background:none; border:1px solid #2e3540; color:#e8edf2; padding:6px 16px; border-radius:30px; font-size:0.9rem; cursor:pointer; }
     .user-menu button:hover { background:#d4942b; color:#0c0f15; }
     /* 弹窗 */
@@ -76,48 +111,58 @@
     .modal button { width:100%; padding:12px; background:linear-gradient(135deg, #d4942b, #b5761e); border:none; color:#0c0f15; font-weight:800; font-size:1rem; border-radius:30px; cursor:pointer; margin-top:8px; }
     .modal .link-text { color:#9aa0b0; text-align:center; margin-top:16px; cursor:pointer; font-size:0.9rem; }
     .modal .close-btn { position:absolute; top:16px; right:20px; background:none; border:none; color:#6b7280; font-size:1.5rem; cursor:pointer; }
+    /* 头像上传 */
+    .avatar-upload { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+    .avatar-upload img { width:60px; height:60px; border-radius:50%; object-fit:cover; background:#1e232b; }
+    .avatar-upload input[type="file"] { display:none; }
     @media (max-width:640px) { .navbar { height:auto; padding:12px 16px; gap:8px; } .search-box { width:100%; max-width:100%; } .product-grid { grid-template-columns:1fr; } .float-sell-btn { bottom:20px; right:20px; padding:12px 20px; font-size:1rem; } }
   </style>
 </head>
 <body>
-  <header class="navbar">
-    <div class="logo">⚡ 竹染游戏账号交易平台</div>
-    <div class="search-box">
-      <span style="font-size:1.1rem;">🔍</span>
-      <input type="text" id="searchInput" placeholder="搜索商品编号/信息……" autocomplete="off">
-    </div>
-    <div class="user-menu" id="userMenu">
-      <button id="loginBtn" style="display:none;">登录/注册</button>
-      <span id="userName" style="display:none; color:#f0c060; font-weight:600;"></span>
-      <button id="logoutBtn" style="display:none;">退出</button>
-    </div>
-  </header>
+  <!-- 樱花背景 -->
+  <div class="sakura-bg" id="sakuraBg"></div>
 
-  <div id="homePage" class="page active">
-    <div class="section-title">🔥 航海王燃烧意志 · 账号商城</div>
-    <div class="game-meta">
-      <span>🎮</span> 当前展示 <strong>航海王燃烧意志</strong> 账号 · 共 <span id="totalCount">0</span> 个在售
+  <!-- 内容区域 -->
+  <div class="content-layer">
+    <header class="navbar">
+      <div class="logo">⚡ 竹染游戏账号交易平台</div>
+      <div class="search-box">
+        <span style="font-size:1.1rem;">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜索商品编号/信息……" autocomplete="off">
+      </div>
+      <div class="user-menu" id="userMenu">
+        <button id="loginBtn" style="display:none;">登录/注册</button>
+        <img id="userAvatar" class="user-avatar" style="display:none;" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E">
+        <span id="userName" class="user-nick" style="display:none;"></span>
+        <button id="logoutBtn" style="display:none;">退出</button>
+      </div>
+    </header>
+
+    <div id="homePage" class="page active">
+      <div class="section-title">🔥 航海王燃烧意志 · 账号商城</div>
+      <div class="game-meta">
+        <span>🎮</span> 当前展示 <strong>航海王燃烧意志</strong> 账号 · 共 <span id="totalCount">0</span> 个在售
+      </div>
+      <div class="product-grid" id="productGrid"></div>
     </div>
-    <div class="product-grid" id="productGrid"></div>
+
+    <div id="detailPage" class="page">
+      <button class="back-btn" id="backBtn">← 返回商城</button>
+      <div class="detail-layout" id="detailContent"></div>
+    </div>
+
+    <button class="float-sell-btn" id="sellBtn">💰 卖账号</button>
+    <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
   </div>
-
-  <div id="detailPage" class="page">
-    <button class="back-btn" id="backBtn">← 返回商城</button>
-    <div class="detail-layout" id="detailContent"></div>
-  </div>
-
-  <button class="float-sell-btn" id="sellBtn">💰 卖账号</button>
-  <div class="footer">© 2026 竹染游戏账号交易平台 zhuran.cc · 客服微信：csy212886226</div>
 
   <!-- 登录/注册/找回密码弹窗 -->
   <div class="modal-overlay" id="authModal">
     <div class="modal">
-      <button class="close-btn" id="closeModal">✕</button>
+      <button class="close-btn" id="closeAuthModal">✕</button>
       <h2 id="modalTitle">登录</h2>
       <input type="text" id="authAccount" placeholder="账号 (8-16位)" maxlength="16" minlength="8" autocomplete="off">
       <input type="password" id="authPassword" placeholder="密码 (英文+数字)" style="display:block;">
       <input type="password" id="authConfirmPassword" placeholder="确认密码" style="display:none;">
-      <!-- 密保问题区域（注册/找回密码时显示） -->
       <select id="authQuestion" style="display:none;">
         <option value="">-- 请选择密保问题 --</option>
         <option value="你的出生城市是？">你的出生城市是？</option>
@@ -127,12 +172,27 @@
         <option value="你最喜欢的食物是？">你最喜欢的食物是？</option>
       </select>
       <input type="text" id="authAnswer" placeholder="密保答案" style="display:none;" autocomplete="off">
-      <!-- 找回密码时显示问题和答案输入 -->
       <div id="forgotQuestionDisplay" style="display:none; margin-bottom:16px; color:#9aa0b0;"></div>
       <button id="authSubmitBtn">登录</button>
       <div class="link-text" id="toggleMode">还没有账号？去注册</div>
       <div class="link-text" id="forgotPwd" style="margin-top:4px;">忘记密码？</div>
       <div id="authError" style="color:#f87171; text-align:center; margin-top:8px; display:none;"></div>
+    </div>
+  </div>
+
+  <!-- 个人资料弹窗 -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal">
+      <button class="close-btn" id="closeProfileModal">✕</button>
+      <h2>个人资料</h2>
+      <div class="avatar-upload">
+        <img id="profileAvatarPreview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E">
+        <button id="uploadAvatarBtn">更换头像</button>
+        <input type="file" id="avatarFileInput" accept="image/*">
+      </div>
+      <input type="text" id="profileNickname" placeholder="昵称">
+      <button id="saveProfileBtn">保存</button>
+      <div id="profileError" style="color:#f87171; text-align:center; margin-top:8px; display:none;"></div>
     </div>
   </div>
 
@@ -147,13 +207,13 @@
     const API_URL_PRODUCTS = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_PRODUCTS)}`;
     const API_URL_USERS = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}`;
 
-    // 哈希盐值
     const SALT = 'zhuran_2026_salt';
 
     let products = [];
-    let currentUser = null;  // 当前登录的用户名
+    let currentUser = null; // 当前登录的用户名
+    let currentUserRecord = null; // 当前用户的 Airtable 记录
 
-    // ================= 密码哈希函数（SHA-256）=================
+    // ================= 密码哈希 ==================
     async function sha256(message) {
       const msgBuffer = new TextEncoder().encode(message);
       const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -161,20 +221,16 @@
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    async function hashPassword(password) {
-      return await sha256(password + SALT);
-    }
-
-    async function hashAnswer(answer) {
-      return await sha256(answer.toLowerCase() + SALT);
-    }
+    async function hashPassword(password) { return await sha256(password + SALT); }
+    async function hashAnswer(answer) { return await sha256(answer.toLowerCase() + SALT); }
 
     // ================= 用户管理 =================
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
+    const userAvatar = document.getElementById('userAvatar');
     const userName = document.getElementById('userName');
     const authModal = document.getElementById('authModal');
-    const closeModal = document.getElementById('closeModal');
+    const closeAuthModal = document.getElementById('closeAuthModal');
     const modalTitle = document.getElementById('modalTitle');
     const authAccount = document.getElementById('authAccount');
     const authPassword = document.getElementById('authPassword');
@@ -187,19 +243,48 @@
     const forgotPwd = document.getElementById('forgotPwd');
     const authError = document.getElementById('authError');
 
-    let authMode = 'login'; // 'login', 'register', 'forgot'
-    let forgotUsername = ''; // 用于找回密码时暂存用户名
+    const profileModal = document.getElementById('profileModal');
+    const closeProfileModal = document.getElementById('closeProfileModal');
+    const profileAvatarPreview = document.getElementById('profileAvatarPreview');
+    const profileNickname = document.getElementById('profileNickname');
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const uploadAvatarBtn = document.getElementById('uploadAvatarBtn');
+    const avatarFileInput = document.getElementById('avatarFileInput');
+    const profileError = document.getElementById('profileError');
 
-    function updateUIBasedOnUser() {
-      if (!loginBtn || !userName || !logoutBtn) return;
+    let authMode = 'login';
+    let forgotUsername = '';
+    let tempAvatarFile = null; // 暂存用户选择的头像文件
+
+    // 更新导航栏用户状态
+    async function updateUIBasedOnUser() {
+      if (!loginBtn || !userName || !logoutBtn || !userAvatar) return;
       if (currentUser) {
         loginBtn.style.display = 'none';
         userName.style.display = 'inline';
-        userName.textContent = currentUser;
+        userAvatar.style.display = 'inline';
         logoutBtn.style.display = 'inline';
+        // 加载用户详细信息（昵称、头像）
+        const record = await findUser(currentUser);
+        if (record) {
+          currentUserRecord = record;
+          const nick = record.fields['昵称'] || currentUser;
+          userName.textContent = nick;
+          userName.title = '点击查看个人资料';
+          const avatarField = record.fields['头像'];
+          if (avatarField && avatarField.length > 0) {
+            userAvatar.src = avatarField[0].url;
+          } else {
+            userAvatar.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E";
+          }
+        }
+        // 点击头像或昵称打开个人资料弹窗
+        userAvatar.onclick = openProfileModal;
+        userName.onclick = openProfileModal;
       } else {
         loginBtn.style.display = 'inline';
         userName.style.display = 'none';
+        userAvatar.style.display = 'none';
         logoutBtn.style.display = 'none';
       }
     }
@@ -207,7 +292,6 @@
     function resetAuthModal(mode) {
       authError.style.display = 'none';
       authMode = mode;
-      // 隐藏所有可选字段
       authPassword.style.display = 'none';
       authConfirmPassword.style.display = 'none';
       authQuestion.style.display = 'none';
@@ -240,7 +324,6 @@
         forgotPwd.style.display = 'none';
       }
 
-      // 清空输入
       authAccount.value = '';
       authPassword.value = '';
       authConfirmPassword.value = '';
@@ -249,16 +332,16 @@
       forgotQuestionDisplay.textContent = '';
     }
 
-    if (loginBtn) loginBtn.addEventListener('click', () => { resetAuthModal('login'); authModal.classList.add('active'); });
-    if (closeModal) closeModal.addEventListener('click', () => { authModal.classList.remove('active'); });
-    if (toggleMode) toggleMode.addEventListener('click', () => {
+    loginBtn.addEventListener('click', () => { resetAuthModal('login'); authModal.classList.add('active'); });
+    closeAuthModal.addEventListener('click', () => { authModal.classList.remove('active'); });
+    toggleMode.addEventListener('click', () => {
       if (authMode === 'login') resetAuthModal('register');
       else if (authMode === 'register') resetAuthModal('login');
       else if (authMode === 'forgot') resetAuthModal('login');
     });
-    if (forgotPwd) forgotPwd.addEventListener('click', () => { resetAuthModal('forgot'); });
+    forgotPwd.addEventListener('click', () => { resetAuthModal('forgot'); });
 
-    // 从 Airtable 查询用户
+    // 查找用户
     async function findUser(username) {
       const formula = encodeURIComponent(`{用户名}="${username}"`);
       const url = `${API_URL_USERS}?filterByFormula=${formula}&maxRecords=1`;
@@ -297,7 +380,7 @@
         }
         currentUser = account;
         authModal.classList.remove('active');
-        updateUIBasedOnUser();
+        await updateUIBasedOnUser();
 
       } else if (authMode === 'register') {
         const password = authPassword.value;
@@ -312,7 +395,6 @@
         const question = authQuestion.value;
         const answer = authAnswer.value.trim();
         if (!question || !answer) { authError.textContent = '请选择密保问题并填写答案'; authError.style.display = 'block'; return; }
-        // 检查账号是否已存在
         const existRecord = await findUser(account);
         if (existRecord) { authError.textContent = '账号已被注册'; authError.style.display = 'block'; return; }
 
@@ -324,7 +406,9 @@
               '用户名': account,
               '密码': hashedPassword,
               '密保问题': question,
-              '密保答案': hashedAnswer
+              '密保答案': hashedAnswer,
+              '昵称': account,  // 默认昵称与账号相同
+              '头像': []
             }
           }]
         };
@@ -339,15 +423,12 @@
         if (!res.ok) { authError.textContent = '注册失败，请稍后重试'; authError.style.display = 'block'; return; }
         currentUser = account;
         authModal.classList.remove('active');
-        updateUIBasedOnUser();
+        await updateUIBasedOnUser();
 
       } else if (authMode === 'forgot') {
-        // 找回密码步骤分两步：
-        // 第一步：输入账号，显示密保问题
         if (!forgotUsername) {
           const record = await findUser(account);
           if (!record) { authError.textContent = '账号不存在'; authError.style.display = 'block'; return; }
-          // 显示密保问题，并隐藏账号输入框，显示答案输入
           forgotUsername = account;
           authAccount.style.display = 'none';
           authPassword.style.display = 'none';
@@ -357,7 +438,6 @@
           authAnswer.style.display = 'block';
           authError.style.display = 'none';
         } else {
-          // 第二步：验证答案，并重置密码
           const answer = authAnswer.value.trim();
           if (!answer) { authError.textContent = '请输入密保答案'; authError.style.display = 'block'; return; }
           const record = await findUser(forgotUsername);
@@ -367,18 +447,15 @@
             authError.textContent = '密保答案错误'; authError.style.display = 'block';
             return;
           }
-          // 答案正确，允许重置密码
           authPassword.style.display = 'block';
           authConfirmPassword.style.display = 'block';
           authAnswer.style.display = 'none';
           authSubmitBtn.textContent = '重置密码';
           modalTitle.textContent = '重置密码';
-          // 更改模式为重置密码
           authMode = 'resetPassword';
           authError.style.display = 'none';
         }
       } else if (authMode === 'resetPassword') {
-        // 重置密码逻辑
         const newPassword = authPassword.value;
         const confirmNewPassword = authConfirmPassword.value;
         if (!newPassword || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
@@ -402,17 +479,97 @@
         authModal.classList.remove('active');
         forgotUsername = '';
         currentUser = null;
-        updateUIBasedOnUser();
+        await updateUIBasedOnUser();
       }
     });
 
-    // 退出登录
+    // 退出
     logoutBtn.addEventListener('click', () => {
       currentUser = null;
+      currentUserRecord = null;
       updateUIBasedOnUser();
     });
 
-    // ================= 商品加载和展示（保持不变）=================
+    // ================= 个人资料弹窗 =================
+    function openProfileModal() {
+      if (!currentUserRecord) return;
+      profileNickname.value = currentUserRecord.fields['昵称'] || '';
+      const avatar = currentUserRecord.fields['头像'];
+      if (avatar && avatar.length > 0) {
+        profileAvatarPreview.src = avatar[0].url;
+      } else {
+        profileAvatarPreview.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E";
+      }
+      profileModal.classList.add('active');
+    }
+
+    closeProfileModal.addEventListener('click', () => profileModal.classList.remove('active'));
+
+    uploadAvatarBtn.addEventListener('click', () => avatarFileInput.click());
+
+    avatarFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        tempAvatarFile = file;
+        const reader = new FileReader();
+        reader.onload = (ev) => { profileAvatarPreview.src = ev.target.result; };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    saveProfileBtn.addEventListener('click', async () => {
+      if (!currentUserRecord) return;
+      profileError.style.display = 'none';
+      const nickname = profileNickname.value.trim() || currentUser;
+      const fields = { '昵称': nickname };
+
+      // 如果有新头像，上传到 Airtable 的附件字段
+      if (tempAvatarFile) {
+        // Airtable 附件上传需要 multipart/form-data
+        const formData = new FormData();
+        formData.append('file', tempAvatarFile);
+        // 先上传到 Airtable 的临时附件端点
+        const uploadUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}/fields/头像/upload`;
+        try {
+          const uploadRes = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}` },
+            body: formData
+          });
+          if (!uploadRes.ok) throw new Error('头像上传失败');
+          const uploadData = await uploadRes.json();
+          fields['头像'] = [{ id: uploadData.id, url: uploadData.url, filename: uploadData.filename }];
+        } catch (err) {
+          profileError.textContent = '头像上传失败，请稍后重试';
+          profileError.style.display = 'block';
+          return;
+        }
+      }
+
+      // 更新用户记录
+      const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}`;
+      const res = await fetch(updateUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fields })
+      });
+      if (!res.ok) {
+        profileError.textContent = '保存失败，请稍后重试';
+        profileError.style.display = 'block';
+        return;
+      }
+      // 更新本地数据
+      currentUserRecord.fields['昵称'] = nickname;
+      if (fields['头像']) currentUserRecord.fields['头像'] = fields['头像'];
+      await updateUIBasedOnUser();
+      profileModal.classList.remove('active');
+      tempAvatarFile = null;
+    });
+
+    // ================= 商品加载 ==================
     async function loadProducts() {
       try {
         const res = await fetch(API_URL_PRODUCTS, {
@@ -471,18 +628,21 @@
       const filtered = products.filter(p => !kw || p.id.toLowerCase().includes(kw) || p.title.toLowerCase().includes(kw) || p.desc.toLowerCase().includes(kw) || (p.server||'').toLowerCase().includes(kw));
       totalCountSpan.textContent = filtered.length;
       if (!filtered.length) { productGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">没有找到匹配的账号</div>'; return; }
-      productGrid.innerHTML = filtered.map(p => `
-        <div class="product-card" data-product-id="${p.id}">
-          <div class="card-img"><img src="${p.images[0]}" alt="${p.id}"></div>
-          <div class="card-body">
-            <div class="product-id">📌 ${p.id}</div>
-            <div class="product-title">${truncate(p.title)}</div>
-            <div class="product-desc">${truncate(p.desc)}</div>
-            <div class="product-server">🌐 ${p.server}</div>
-            <div class="product-footer"><span class="price">¥${p.price}</span><button class="btn-sm">查看详情</button></div>
+      productGrid.innerHTML = filtered.map(p => {
+        const displayId = p.id.toString().padStart(2, '0'); // 自动补零
+        return `
+          <div class="product-card" data-product-id="${p.id}">
+            <div class="card-img"><img src="${p.images[0]}" alt="${displayId}"></div>
+            <div class="card-body">
+              <div class="product-id">📌 ${displayId}</div>
+              <div class="product-title">${truncate(p.title)}</div>
+              <div class="product-desc">${truncate(p.desc)}</div>
+              <div class="product-server">🌐 ${p.server}</div>
+              <div class="product-footer"><span class="price">¥${p.price}</span><button class="btn-sm">查看详情</button></div>
+            </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
       document.querySelectorAll('.product-card').forEach(c => c.addEventListener('click', () => navigateToDetail(c.dataset.productId)));
     }
 
@@ -495,9 +655,13 @@
       const thumbs = images.map((img,i) => `<img src="${img}" class="thumb ${i===0?'active':''}" data-index="${i}" alt="缩略图">`).join('');
       const currentBid = p.highestBid || 0;
       const bidDisplay = currentBid > 0 ? `¥${currentBid}` : '暂无出价';
+      const displayId = p.id.toString().padStart(2, '0');
 
       detailContent.innerHTML = `
-        <div class="detail-gallery"><img src="${mainImg}" class="main-img" id="mainImg"><div class="thumb-list">${thumbs}</div></div>
+        <div class="detail-gallery">
+          <img src="${mainImg}" class="main-img" id="mainImg" alt="${displayId}">
+          <div class="thumb-list" id="thumbList">${thumbs}</div>
+        </div>
         <div class="detail-info">
           <h1>${truncate(p.title)}</h1>
           <div class="detail-price">¥${p.price}</div>
@@ -510,18 +674,23 @@
             <div class="bid-error" id="bidError"></div>
           </div>
           <div class="detail-desc">${p.desc}</div>
-          <div class="detail-meta"><div class="meta-item"><div class="label">商品编号</div><div class="value">${p.id}</div></div><div class="meta-item"><div class="label">所在区服</div><div class="value">${p.server}</div></div></div>
+          <div class="detail-meta">
+            <div class="meta-item"><div class="label">商品编号</div><div class="value">${displayId}</div></div>
+            <div class="meta-item"><div class="label">所在区服</div><div class="value">${p.server}</div></div>
+          </div>
           <button class="buy-btn" id="buyBtn">💬 联系客服购买</button>
           <div class="contact-row"><span>📱 客服微信：csy212886226</span></div>
         </div>
       `;
 
-      document.querySelectorAll('#thumbList .thumb').forEach(thumb => {
+      // 绑定缩略图切换事件（修复点击无效）
+      const thumbElements = document.querySelectorAll('#thumbList .thumb');
+      thumbElements.forEach(thumb => {
         thumb.addEventListener('click', function() {
           const index = parseInt(this.dataset.index, 10);
           if (images[index]) {
             document.getElementById('mainImg').src = images[index];
-            document.querySelectorAll('#thumbList .thumb').forEach(t => t.classList.remove('active'));
+            thumbElements.forEach(t => t.classList.remove('active'));
             this.classList.add('active');
           }
         });
@@ -529,6 +698,7 @@
 
       document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
 
+      // 出价逻辑
       const bidInput = document.getElementById('bidInput');
       const submitBtn = document.getElementById('submitBidBtn');
       const errorEl = document.getElementById('bidError');
@@ -587,8 +757,19 @@
       });
     }
 
-    function navigateToHome() { currentRoute='home'; currentProductId=null; homePage.classList.add('active'); detailPage.classList.remove('active'); window.location.hash='#/'; renderHome(searchInput.value); }
-    function navigateToDetail(pid) { currentRoute='detail'; currentProductId=pid; homePage.classList.remove('active'); detailPage.classList.add('active'); window.location.hash=`#/detail/${pid}`; renderDetail(pid); window.scrollTo({top:0,behavior:'smooth'}); }
+    function navigateToHome() {
+      currentRoute='home'; currentProductId=null;
+      homePage.classList.add('active'); detailPage.classList.remove('active');
+      window.location.hash='#/';
+      renderHome(searchInput.value);
+    }
+    function navigateToDetail(pid) {
+      currentRoute='detail'; currentProductId=pid;
+      homePage.classList.remove('active'); detailPage.classList.add('active');
+      window.location.hash=`#/detail/${pid}`;
+      renderDetail(pid);
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
     searchInput.addEventListener('input', e => { if (currentRoute==='home') renderHome(e.target.value); });
     backBtn.addEventListener('click', navigateToHome);
 
@@ -598,28 +779,42 @@
         const pid=m[1];
         if (products.some(p => p.id===pid)) {
           if (currentRoute!=='detail'||currentProductId!==pid) {
-            homePage.classList.remove('active');
-            detailPage.classList.add('active');
+            homePage.classList.remove('active'); detailPage.classList.add('active');
             renderDetail(pid);
-            currentRoute='detail';
-            currentProductId=pid;
+            currentRoute='detail'; currentProductId=pid;
           }
         } else navigateToHome();
       } else {
         if (currentRoute!=='home') {
-          homePage.classList.add('active');
-          detailPage.classList.remove('active');
+          homePage.classList.add('active'); detailPage.classList.remove('active');
           renderHome(searchInput.value);
-          currentRoute='home';
-          currentProductId=null;
+          currentRoute='home'; currentProductId=null;
         }
       }
     }
     window.addEventListener('hashchange', handleHashChange);
 
+    // ================= 樱花飘落效果 =================
+    function createSakura() {
+      const container = document.getElementById('sakuraBg');
+      const count = 15;
+      for (let i = 0; i < count; i++) {
+        const sakura = document.createElement('div');
+        sakura.classList.add('sakura');
+        sakura.style.left = Math.random() * 100 + '%';
+        sakura.style.animationDuration = Math.random() * 5 + 8 + 's';
+        sakura.style.animationDelay = Math.random() * 5 + 's';
+        sakura.style.fontSize = Math.random() * 16 + 12 + 'px';
+        sakura.style.opacity = Math.random() * 0.3 + 0.2;
+        sakura.textContent = '🌸';
+        container.appendChild(sakura);
+      }
+    }
+
     // 启动
     updateUIBasedOnUser();
     loadProducts();
+    createSakura();
   </script>
 </body>
 </html>
