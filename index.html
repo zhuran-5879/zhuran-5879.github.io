@@ -206,7 +206,7 @@
 
     let authMode = 'login';
     let forgotUsername = '';
-    let tempAvatarBase64 = null; // 暂存选中的头像 base64
+    let tempAvatarFile = null; // 暂存选中的头像 base64
 
     // 更新导航栏
     async function updateUIBasedOnUser() {
@@ -433,7 +433,7 @@
       profileNickname.value = currentUserRecord.fields['昵称'] || '';
       const avatarBase64 = currentUserRecord.fields['头像base64'] || '';
       profileAvatarPreview.src = avatarBase64 || DEFAULT_AVATAR;
-      tempAvatarBase64 = null; // 重置临时头像
+      tempAvatarFile = null; // 重置临时头像
       profileError.style.display = 'none';
       profileModal.classList.add('active');
     }
@@ -441,20 +441,48 @@
     closeProfileModal.addEventListener('click', () => profileModal.classList.remove('active'));
     uploadAvatarBtn.addEventListener('click', () => avatarFileInput.click());
 
-    avatarFileInput.addEventListener('change', (e) => {
+        avatarFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
+        tempAvatarFile = file;
+        // 先快速预览原图（不压缩），保存时才压缩
         const reader = new FileReader();
-        reader.onload = (ev) => {
-          const base64 = ev.target.result; // data:image/...
-          tempAvatarBase64 = base64;
-          profileAvatarPreview.src = base64;
-        };
+        reader.onload = (ev) => { profileAvatarPreview.src = ev.target.result; };
         reader.readAsDataURL(file);
       }
     });
 
     // 保存个人资料（昵称 + 头像分开处理）
+       // ========== 图片压缩函数 ==========
+    function compressImage(file, maxWidth = 200, quality = 0.6) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            // 如果原图宽度小于限制，直接返回原 Base64
+            if (img.width <= maxWidth) {
+              resolve(e.target.result);
+              return;
+            }
+            // 缩放
+            const canvas = document.createElement('canvas');
+            const ratio = maxWidth / img.width;
+            canvas.width = maxWidth;
+            canvas.height = img.height * ratio;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 保存个人资料（昵称 + 头像压缩后保存）
     saveProfileBtn.addEventListener('click', async () => {
       if (!currentUserRecord) {
         profileError.textContent = '用户数据未加载';
@@ -465,9 +493,19 @@
       const nickname = profileNickname.value.trim() || currentUser;
       const fields = { '昵称': nickname };
 
-      // 如果有新头像，将 base64 放入字段
-      if (tempAvatarBase64) {
-        fields['头像base64'] = tempAvatarBase64;
+      // 如果有新头像，压缩后再保存
+      if (tempAvatarFile) {
+        try {
+          const compressedBase64 = await compressImage(tempAvatarFile, 200, 0.6);
+          fields['头像base64'] = compressedBase64;
+          // 预览也更新为压缩后的版本
+          profileAvatarPreview.src = compressedBase64;
+        } catch (err) {
+          console.error(err);
+          profileError.textContent = '图片压缩失败，请重试';
+          profileError.style.display = 'block';
+          return;
+        }
       }
 
       const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}`;
@@ -486,7 +524,7 @@
         if (fields['头像base64']) currentUserRecord.fields['头像base64'] = fields['头像base64'];
         await updateUIBasedOnUser();
         profileModal.classList.remove('active');
-        tempAvatarBase64 = null;
+        tempAvatarFile = null; // 注意：原来是 tempAvatarBase64，现在改成用文件对象，所以变量名也要微调
       } catch (err) {
         console.error(err);
         profileError.textContent = '保存失败：' + err.message;
