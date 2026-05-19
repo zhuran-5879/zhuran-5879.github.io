@@ -1,9 +1,9 @@
 name: Build Products JSON
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'     # 每6小时自动运行一次
-  workflow_dispatch:            # 允许手动触发
+    - cron: '*/15 * * * *'   # 每15分钟自动更新一次
 
 jobs:
   build:
