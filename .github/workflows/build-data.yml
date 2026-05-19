@@ -3,12 +3,15 @@ name: Build Products JSON
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * *'   # 每15分钟自动更新一次
+    - cron: '*/15 * * * *'
+  repository_dispatch:
+    types: [update-products]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # ... 后续步骤保持不变，不需要动
       - name: Checkout repository
         uses: actions/checkout@v3
 
