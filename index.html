@@ -644,7 +644,14 @@
 
     function renderHome(filterText='') {
       const kw = filterText.trim().toLowerCase();
-      const filtered = products.filter(p => !kw || p.id.toLowerCase().includes(kw) || p.title.toLowerCase().includes(kw) || p.desc.toLowerCase().includes(kw) || (p.server||'').toLowerCase().includes(kw));
+        let filtered = products.filter(p => !kw || p.id.toLowerCase().includes(kw) || p.title.toLowerCase().includes(kw) || p.desc.toLowerCase().includes(kw) || (p.server||'').toLowerCase().includes(kw));
+  
+  // 未出售的排前面
+  filtered.sort((a, b) => {
+    if (a.status === '已出售' && b.status !== '已出售') return 1;
+    if (a.status !== '已出售' && b.status === '已出售') return -1;
+    return 0;
+  });
       totalCountSpan.textContent = filtered.length;
       if (!filtered.length) { productGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">没有找到匹配的账号</div>'; return; }
       productGrid.innerHTML = filtered.map(p => {
@@ -769,6 +776,40 @@
     updateUIBasedOnUser();
     loadProducts();
     createSakura();
+      // 首次访问弹窗
+  (function() {
+    const noticeModal = document.getElementById('noticeModal');
+    const closeNoticeModal = document.getElementById('closeNoticeModal');
+    const confirmNoticeBtn = document.getElementById('confirmNoticeBtn');
+
+    if (!localStorage.getItem('zhuran_notice_read')) {
+      noticeModal.classList.add('active');
+    }
+
+    function closeNotice() {
+      noticeModal.classList.remove('active');
+      localStorage.setItem('zhuran_notice_read', 'true');
+    }
+
+    closeNoticeModal.addEventListener('click', closeNotice);
+    confirmNoticeBtn.addEventListener('click', closeNotice);
+  })();
   </script>
+    <!-- 首次访问公告弹窗 -->
+  <div class="modal-overlay" id="noticeModal">
+    <div class="modal" style="max-width:500px; text-align:left; line-height:1.8;">
+      <button class="close-btn" id="closeNoticeModal">✕</button>
+      <h2 style="text-align:center;">📢 竹染游戏账号交易平台公告</h2>
+      <div style="color:#b0b8c5; font-size:0.95rem;">
+        <p>1. 本网站只为本人展示账号信息页面，<strong>不支持在线交易</strong>，见谅（后续可能有）</p>
+        <p>2. 本网站的商品一律<strong>支持砍价</strong>，看中的可以联系客服vx：<strong style="color:#f0c060;">csy212886226</strong></p>
+        <p>3. 本网站支持各位老板上传账号信息，记得根据要求填写，否则可能上传不成功（尽我所能完善网页内容）</p>
+        <p>4. 本网站的账号密码由各位所属，忘记了我也没办法，因为我这边也看不到各位的密码，忘记了可以重新注册一个问题不大</p>
+        <p>5. 本人抖音号为：<strong style="color:#f0c060;">zhuran5879</strong>，抖音名字：<strong>竹染很怕死</strong>，谢谢各位的支持，有什么意见内容都可以私信客服vx：<strong style="color:#f0c060;">csy212886226</strong></p>
+        <p>6. 老板上传的账号信息后<strong>一定要私信客服并报上编号登记</strong>，有人购买会第一时间通知您</p>
+      </div>
+      <button id="confirmNoticeBtn" style="margin-top:16px;">我知道了</button>
+    </div>
+  </div>
 </body>
 </html>
