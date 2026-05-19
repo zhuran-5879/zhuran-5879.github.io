@@ -1,1 +1,63 @@
 
+name: Build Products JSON
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # 每6小时运行一次
+  workflow_dispatch:          # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Fetch products from Airtable
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          AIRTABLE_BASE_ID: appHghJgUFfWnqFaU
+          TABLE_NAME: products
+        run: |
+          curl -s "https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${TABLE_NAME}?maxRecords=100" \
+            -H "Authorization: Bearer ${AIRTABLE_TOKEN}" \
+            | python3 -c "
+      import json, sys
+      data = json.load(sys.stdin)
+      products = []
+      for rec in data.get('records', []):
+          f = rec.get('fields', {})
+          main_img = f.get('主图URL') or f.get('主图base64') or (f.get('主图', [{}])[0].get('url', '')) or 'https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片'
+          other_imgs = []
+          if f.get('其他图片URL'):
+              other_imgs = f['其他图片URL'].split(',')
+          elif f.get('其他图片base64'):
+              other_imgs = f['其他图片base64'].split(',')
+          elif f.get('其他图片'):
+              other_imgs = [img['url'] for img in f['其他图片']]
+          products.append({
+              'id': f.get('编号', ''),
+              'recordId': rec.get('id', ''),
+              'title': f.get('标题', ''),
+              'desc': f.get('描述', ''),
+              'price': f.get('价格', 0),
+              'server': f.get('区服', ''),
+              'status': f.get('状态', '未出售'),
+              'images': [main_img] + other_imgs,
+              'uploader': f.get('上传者', '')
+          })
+      with open('products.json', 'w', encoding='utf-8') as out:
+          json.dump(products, out, ensure_ascii=False)
+      "
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add products.json
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Update products.json [skip ci]"
+            git push
+          fi
