@@ -177,7 +177,7 @@
     </div>
   </div>
 
-  <!-- 卖账号弹窗（文件上传） -->
+  <!-- 卖账号弹窗（使用 SM.MS 上传） -->
   <div class="modal-overlay" id="sellModal">
     <div class="modal">
       <button class="close-btn" id="closeSellModal">✕</button>
@@ -209,7 +209,6 @@
       baseId: 'appHghJgUFfWnqFaU',
       token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',  // ⚠️ 替换成你自己的 Airtable 读写 Token
     };
-    const WORKER_URL = 'https://image-upload.212886226.workers.dev'; // ⚠️ 替换成你的 Cloudflare Worker URL
     // =================================================
     const TABLE_PRODUCTS = 'products';
     const TABLE_USERS = 'users';
@@ -255,17 +254,69 @@
     async function hashPassword(password) { return await sha256(password + SALT); }
     async function hashAnswer(answer) { return await sha256(answer.toLowerCase() + SALT); }
 
-    // ===== 通过 Cloudflare Worker 上传图片 =====
-    async function uploadViaWorker(file) {
+    // 压缩图片（用于 SM.MS 上传前的轻度压缩，保持清晰度）
+    function compressImageIfNeeded(file, maxSizeMB = 5) {
+      return new Promise((resolve, reject) => {
+        if (file.size <= maxSizeMB * 1024 * 1024) {
+          resolve(file); // 不压缩，直接返回原文件
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            // 如果图片尺寸也很大，适当缩小
+            const maxDim = 1920;
+            if (width > maxDim || height > maxDim) {
+              const ratio = Math.min(maxDim / width, maxDim / height);
+              width = Math.round(width * ratio);
+              height = Math.round(height * ratio);
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob((blob) => {
+              if (blob) {
+                // 如果压缩后还是大于 5MB，降低质量
+                if (blob.size > maxSizeMB * 1024 * 1024) {
+                  canvas.toBlob((blob2) => resolve(blob2 || blob), 'image/jpeg', 0.7);
+                } else {
+                  resolve(blob);
+                }
+              } else {
+                reject(new Error('压缩失败'));
+              }
+            }, 'image/jpeg', 0.8);
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 上传图片到 SM.MS（匿名）
+    async function uploadToSmms(file) {
       const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch(WORKER_URL, { method: 'POST', body: formData });
+      formData.append('smfile', file);
+      const res = await fetch('https://sm.ms/api/v2/upload', {
+        method: 'POST',
+        body: formData
+      });
       if (!res.ok) {
         const err = await res.text();
-        throw new Error('上传失败: ' + err);
+        throw new Error('图床连接失败: ' + err);
       }
-      const data = await res.json();
-      return data.url;
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.message || '上传失败');
+      }
+      return json.data.url;
     }
 
     // ===== 用户认证 =====
@@ -520,7 +571,7 @@
       } catch (err) { profileError.textContent = '保存失败：' + err.message; profileError.style.display = 'block'; }
     });
 
-    // ===== 卖账号 =====
+    // ===== 卖账号（SM.MS 上传）=====
     const sellBtn = document.getElementById('sellBtn');
     const sellModal = document.getElementById('sellModal');
     const closeSellModal = document.getElementById('closeSellModal');
@@ -567,11 +618,16 @@
       }
       sellError.style.display = 'none'; submitSellBtn.disabled = true; submitSellBtn.textContent = '上传中...';
       try {
-        const mainUrl = await uploadViaWorker(mainFile);
-        const otherFiles = sellOtherImgs.files; const otherUrls = [];
+        // 主图压缩（如果超过 5MB 则压缩）
+        const mainFileToUpload = await compressImageIfNeeded(mainFile, 5);
+        const mainUrl = await uploadToSmms(mainFileToUpload);
+        const otherFiles = sellOtherImgs.files;
+        const otherUrls = [];
         for (let i = 0; i < Math.min(otherFiles.length, 20); i++) {
           submitSellBtn.textContent = `上传其他图 ${i+1}/${Math.min(otherFiles.length,20)}...`;
-          const url = await uploadViaWorker(otherFiles[i]); otherUrls.push(url);
+          const fileToUpload = await compressImageIfNeeded(otherFiles[i], 5);
+          const url = await uploadToSmms(fileToUpload);
+          otherUrls.push(url);
         }
         const fields = {
           '编号': id, '标题': title, '描述': desc, '价格': price, '区服': server,
