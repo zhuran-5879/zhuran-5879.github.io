@@ -776,26 +776,9 @@
     updateUIBasedOnUser();
     loadProducts();
     createSakura();
-      // 首次访问弹窗
-  (function() {
-    const noticeModal = document.getElementById('noticeModal');
-    const closeNoticeModal = document.getElementById('closeNoticeModal');
-    const confirmNoticeBtn = document.getElementById('confirmNoticeBtn');
-
-    if (!localStorage.getItem('zhuran_notice_read')) {
-      noticeModal.classList.add('active');
-    }
-
-    function closeNotice() {
-      noticeModal.classList.remove('active');
-      localStorage.setItem('zhuran_notice_read', 'true');
-    }
-
-    closeNoticeModal.addEventListener('click', closeNotice);
-    confirmNoticeBtn.addEventListener('click', closeNotice);
-  })();
   </script>
-    <!-- 首次访问公告弹窗 -->
+
+  <!-- 首次访问公告弹窗 -->
   <div class="modal-overlay" id="noticeModal">
     <div class="modal" style="max-width:500px; text-align:left; line-height:1.8;">
       <button class="close-btn" id="closeNoticeModal">✕</button>
@@ -811,5 +794,26 @@
       <button id="confirmNoticeBtn" style="margin-top:16px;">我知道了</button>
     </div>
   </div>
+
+    <script>
+    // 首次访问弹窗
+    (function() {
+      const noticeModal = document.getElementById('noticeModal');
+      const closeNoticeModal = document.getElementById('closeNoticeModal');
+      const confirmNoticeBtn = document.getElementById('confirmNoticeBtn');
+
+      if (!localStorage.getItem('zhuran_notice_read')) {
+        noticeModal.classList.add('active');
+      }
+
+      function closeNotice() {
+        noticeModal.classList.remove('active');
+        localStorage.setItem('zhuran_notice_read', 'true');
+      }
+
+      closeNoticeModal.addEventListener('click', closeNotice);  // 补齐了括号
+      confirmNoticeBtn.addEventListener('click', closeNotice);
+    })();
+  </script>
 </body>
 </html>
