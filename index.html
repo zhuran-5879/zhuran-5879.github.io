@@ -177,7 +177,7 @@
     </div>
   </div>
 
-  <!-- 卖账号弹窗 -->
+  <!-- 卖账号弹窗（文件上传） -->
   <div class="modal-overlay" id="sellModal">
     <div class="modal">
       <button class="close-btn" id="closeSellModal">✕</button>
@@ -204,16 +204,17 @@
   </div>
 
   <script>
-    // ================= 配置 ==================
+    // ================= 配置（修改这里） =================
     const AIRTABLE_CONFIG = {
       baseId: 'appHghJgUFfWnqFaU',
-      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',   // ⚠️ 替换成你自己的读写 Token
+      token: 'patM1jbcaFgZQVDru.a3b8d16f90f9e5dee9f6a5516a48e0b33563e2adf8f3bfe6d9b421505c68772f',  // ⚠️ 替换成你自己的 Airtable 读写 Token
     };
+    const WORKER_URL = 'https://image-upload.212886226.workers.dev'; // ⚠️ 替换成你的 Cloudflare Worker URL
+    // =================================================
     const TABLE_PRODUCTS = 'products';
     const TABLE_USERS = 'users';
     const API_URL_PRODUCTS = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_PRODUCTS)}`;
     const API_URL_USERS = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}`;
-
     const SALT = 'zhuran_2026_salt';
     const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23212833'/%3E%3Ctext x='50' y='65' text-anchor='middle' fill='%23f0c060' font-size='40'%3E👤%3C/text%3E%3C/svg%3E";
 
@@ -227,20 +228,16 @@
       bgMusic.volume = 0.5;
       const musicToggle = document.getElementById('musicToggle');
       let musicPlaying = false;
-      bgMusic.play().then(() => {
-        musicPlaying = true; musicToggle.textContent = '🔇';
-      }).catch(() => {
-        musicToggle.textContent = '🎵';
-        const resumePlay = () => {
-          if (!musicPlaying) {
-            bgMusic.play().then(() => {
-              musicPlaying = true; musicToggle.textContent = '🔇';
-              document.removeEventListener('click', resumePlay);
-            }).catch(() => {});
-          }
-        };
-        document.addEventListener('click', resumePlay);
-      });
+      bgMusic.play().then(() => { musicPlaying = true; musicToggle.textContent = '🔇'; })
+        .catch(() => {
+          musicToggle.textContent = '🎵';
+          const resumePlay = () => {
+            if (!musicPlaying) {
+              bgMusic.play().then(() => { musicPlaying = true; musicToggle.textContent = '🔇'; document.removeEventListener('click', resumePlay); }).catch(() => {});
+            }
+          };
+          document.addEventListener('click', resumePlay);
+        });
       musicToggle.addEventListener('click', (e) => {
         e.stopPropagation();
         if (musicPlaying) { bgMusic.pause(); musicPlaying = false; musicToggle.textContent = '🎵'; }
@@ -257,6 +254,19 @@
     }
     async function hashPassword(password) { return await sha256(password + SALT); }
     async function hashAnswer(answer) { return await sha256(answer.toLowerCase() + SALT); }
+
+    // ===== 通过 Cloudflare Worker 上传图片 =====
+    async function uploadViaWorker(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(WORKER_URL, { method: 'POST', body: formData });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error('上传失败: ' + err);
+      }
+      const data = await res.json();
+      return data.url;
+    }
 
     // ===== 用户认证 =====
     const loginBtn = document.getElementById('loginBtn');
@@ -320,7 +330,6 @@
       authQuestion.style.display = 'none'; authAnswer.style.display = 'none';
       forgotQuestionDisplay.style.display = 'none'; authAccount.style.display = 'block';
       forgotPwd.style.display = 'none';
-
       if (mode === 'login') {
         modalTitle.textContent = '登录'; authPassword.style.display = 'block';
         authSubmitBtn.textContent = '登录'; toggleMode.textContent = '还没有账号？去注册';
@@ -416,10 +425,7 @@
       }
     });
 
-    logoutBtn.addEventListener('click', () => {
-      currentUser = null; currentUserRecord = null;
-      updateUIBasedOnUser();
-    });
+    logoutBtn.addEventListener('click', () => { currentUser = null; currentUserRecord = null; updateUIBasedOnUser(); });
 
     // ===== 个人资料 & 我的商品 =====
     const profileModal = document.getElementById('profileModal');
@@ -431,7 +437,6 @@
     const avatarFileInput = document.getElementById('avatarFileInput');
     const profileError = document.getElementById('profileError');
     const myProductsList = document.getElementById('myProductsList');
-
     let tempAvatarFile = null;
 
     async function loadMyProducts() {
@@ -448,56 +453,31 @@
         }
         myProductsList.innerHTML = myProds.map(rec => {
           const f = rec.fields;
-          return `
-            <div class="my-product-item">
-              <div class="item-info">
-                <strong>📌 ${f['编号']}</strong> - ${f['标题']} <span style="color:#9aa0b0;">(¥${f['价格']})</span>
-                <span style="margin-left:8px; color:${f['状态']==='已出售'?'#f87171':'#6b7280'}">[${f['状态']||'未出售'}]</span>
-              </div>
-              <div class="item-actions">
-                <button onclick="changeProductStatus('${rec.id}', '已出售')">已出售</button>
-                <button onclick="changeProductStatus('${rec.id}', '未出售')">未出售</button>
-              </div>
-            </div>
-          `;
+          return `<div class="my-product-item"><div class="item-info"><strong>📌 ${f['编号']}</strong> - ${f['标题']} <span style="color:#9aa0b0;">(¥${f['价格']})</span> <span style="margin-left:8px; color:${f['状态']==='已出售'?'#f87171':'#6b7280'}">[${f['状态']||'未出售'}]</span></div><div class="item-actions"><button onclick="changeProductStatus('${rec.id}', '已出售')">已出售</button><button onclick="changeProductStatus('${rec.id}', '未出售')">未出售</button></div></div>`;
         }).join('');
-      } catch (err) {
-        myProductsList.innerHTML = '<div style="color:#f87171;">加载失败</div>';
-      }
+      } catch (err) { myProductsList.innerHTML = '<div style="color:#f87171;">加载失败</div>'; }
     }
 
     window.changeProductStatus = async function(recordId, newStatus) {
       if (!currentUser) return;
-      if (newStatus === '已出售') {
-        alert('请联系客服微信：csy212886226，有买家入手会提醒你');
-      }
+      if (newStatus === '已出售') alert('请联系客服微信：csy212886226，有买家入手会提醒你');
       try {
         const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_PRODUCTS)}/${recordId}`;
-        await fetch(updateUrl, {
-          method: 'PATCH',
-          headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fields: { '状态': newStatus } })
-        });
+        await fetch(updateUrl, { method: 'PATCH', headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: { '状态': newStatus } }) });
         await loadMyProducts();
         await loadProducts();
-      } catch (err) {
-        alert('状态更新失败，请重试');
-      }
+      } catch (err) { alert('状态更新失败，请重试'); }
     };
 
     function openProfileModal() {
       if (!currentUserRecord) return;
       profileNickname.value = currentUserRecord.fields['昵称'] || '';
       profileAvatarPreview.src = currentUserRecord.fields['头像base64'] || DEFAULT_AVATAR;
-      tempAvatarFile = null;
-      profileError.style.display = 'none';
-      loadMyProducts();
-      profileModal.classList.add('active');
+      tempAvatarFile = null; profileError.style.display = 'none';
+      loadMyProducts(); profileModal.classList.add('active');
     }
-
     closeProfileModal.addEventListener('click', () => profileModal.classList.remove('active'));
     uploadAvatarBtn.addEventListener('click', () => avatarFileInput.click());
-
     avatarFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -507,7 +487,6 @@
         reader.readAsDataURL(file);
       }
     });
-
     saveProfileBtn.addEventListener('click', async () => {
       if (!currentUserRecord) { profileError.textContent = '用户数据未加载'; profileError.style.display = 'block'; return; }
       profileError.style.display = 'none';
@@ -515,30 +494,21 @@
       const fields = { '昵称': nickname };
       if (tempAvatarFile) {
         try {
-          // 头像用 canvas 简单压缩
           const compressed = await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
               const img = new Image();
               img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const maxW = 200;
-                const ratio = maxW / img.width;
-                canvas.width = maxW;
-                canvas.height = img.height * ratio;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const maxW = 200; const ratio = maxW / img.width;
+                canvas.width = maxW; canvas.height = img.height * ratio;
+                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 resolve(canvas.toDataURL('image/jpeg', 0.6));
-              };
-              img.src = e.target.result;
-            };
-            reader.readAsDataURL(tempAvatarFile);
+              }; img.src = e.target.result;
+            }; reader.readAsDataURL(tempAvatarFile);
           });
-          fields['头像base64'] = compressed;
-          profileAvatarPreview.src = compressed;
-        } catch (err) {
-          profileError.textContent = '图片压缩失败'; profileError.style.display = 'block'; return;
-        }
+          fields['头像base64'] = compressed; profileAvatarPreview.src = compressed;
+        } catch (err) { profileError.textContent = '图片压缩失败'; profileError.style.display = 'block'; return; }
       }
       const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_USERS)}/${currentUserRecord.id}`;
       try {
@@ -546,28 +516,11 @@
         if (!res.ok) throw new Error(await res.text());
         currentUserRecord.fields['昵称'] = nickname;
         if (fields['头像base64']) currentUserRecord.fields['头像base64'] = fields['头像base64'];
-        await updateUIBasedOnUser();
-        profileModal.classList.remove('active');
-        tempAvatarFile = null;
-      } catch (err) {
-        profileError.textContent = '保存失败：' + err.message; profileError.style.display = 'block';
-      }
+        await updateUIBasedOnUser(); profileModal.classList.remove('active'); tempAvatarFile = null;
+      } catch (err) { profileError.textContent = '保存失败：' + err.message; profileError.style.display = 'block'; }
     });
 
-    // ===== 上传商品到 Imgur =====
-    async function uploadToImgur(file) {
-      const formData = new FormData();
-      formData.append('image', file);
-      const res = await fetch('https://api.imgur.com/3/image', {
-        method: 'POST',
-        headers: { 'Authorization': 'Client-ID 546c25a59c58ad7' },
-        body: formData
-      });
-      if (!res.ok) { const err = await res.text(); throw new Error('Imgur 上传失败: ' + err); }
-      const data = await res.json();
-      return data.data.link;
-    }
-
+    // ===== 卖账号 =====
     const sellBtn = document.getElementById('sellBtn');
     const sellModal = document.getElementById('sellModal');
     const closeSellModal = document.getElementById('closeSellModal');
@@ -584,29 +537,16 @@
     const otherImgsPreview = document.getElementById('otherImgsPreview');
 
     sellBtn.addEventListener('click', () => {
-      if (!currentUser) {
-        alert('请先登录后再上传账号');
-        resetAuthModal('login');
-        authModal.classList.add('active');
-        return;
-      }
-      sellId.value = ''; sellTitle.value = ''; sellDesc.value = '';
-      sellPrice.value = ''; sellServer.value = '';
-      sellMainImg.value = ''; sellOtherImgs.value = '';
-      mainImgPreview.innerHTML = ''; otherImgsPreview.innerHTML = '';
-      sellError.style.display = 'none';
-      sellModal.classList.add('active');
+      if (!currentUser) { alert('请先登录后再上传账号'); resetAuthModal('login'); authModal.classList.add('active'); return; }
+      sellId.value = ''; sellTitle.value = ''; sellDesc.value = ''; sellPrice.value = ''; sellServer.value = '';
+      sellMainImg.value = ''; sellOtherImgs.value = ''; mainImgPreview.innerHTML = ''; otherImgsPreview.innerHTML = '';
+      sellError.style.display = 'none'; sellModal.classList.add('active');
     });
     closeSellModal.addEventListener('click', () => sellModal.classList.remove('active'));
-
     sellMainImg.addEventListener('change', (e) => {
       mainImgPreview.innerHTML = '';
       const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => { mainImgPreview.innerHTML = `<img src="${ev.target.result}" alt="主图">`; };
-        reader.readAsDataURL(file);
-      }
+      if (file) { const reader = new FileReader(); reader.onload = (ev) => { mainImgPreview.innerHTML = `<img src="${ev.target.result}" alt="主图">`; }; reader.readAsDataURL(file); }
     });
     sellOtherImgs.addEventListener('change', (e) => {
       otherImgsPreview.innerHTML = '';
@@ -619,62 +559,40 @@
 
     submitSellBtn.addEventListener('click', async () => {
       if (!currentUser) { sellError.textContent = '请先登录'; sellError.style.display = 'block'; return; }
-      const id = sellId.value.trim();
-      const title = sellTitle.value.trim();
-      const desc = sellDesc.value.trim();
-      const price = parseFloat(sellPrice.value);
-      const server = sellServer.value.trim();
+      const id = sellId.value.trim(); const title = sellTitle.value.trim(); const desc = sellDesc.value.trim();
+      const price = parseFloat(sellPrice.value); const server = sellServer.value.trim();
       const mainFile = sellMainImg.files[0];
       if (!id || !title || !desc || isNaN(price) || !server || !mainFile) {
         sellError.textContent = '请填写所有必填项并上传主图'; sellError.style.display = 'block'; return;
       }
-      sellError.style.display = 'none';
-      submitSellBtn.disabled = true; submitSellBtn.textContent = '上传中...';
+      sellError.style.display = 'none'; submitSellBtn.disabled = true; submitSellBtn.textContent = '上传中...';
       try {
-        const mainUrl = await uploadToImgur(mainFile);
-        const otherFiles = sellOtherImgs.files;
-        const otherUrls = [];
+        const mainUrl = await uploadViaWorker(mainFile);
+        const otherFiles = sellOtherImgs.files; const otherUrls = [];
         for (let i = 0; i < Math.min(otherFiles.length, 20); i++) {
           submitSellBtn.textContent = `上传其他图 ${i+1}/${Math.min(otherFiles.length,20)}...`;
-          const url = await uploadToImgur(otherFiles[i]);
-          otherUrls.push(url);
+          const url = await uploadViaWorker(otherFiles[i]); otherUrls.push(url);
         }
         const fields = {
-          '编号': id,
-          '标题': title,
-          '描述': desc,
-          '价格': price,
-          '区服': server,
-          '上传者': currentUser,
-          '最高出价': 0,
-          '主图URL': mainUrl,
-          '其他图片URL': otherUrls.join(','),
-          '状态': '未出售'
+          '编号': id, '标题': title, '描述': desc, '价格': price, '区服': server,
+          '上传者': currentUser, '最高出价': 0, '主图URL': mainUrl, '其他图片URL': otherUrls.join(','), '状态': '未出售'
         };
         const body = { records: [{ fields }] };
         const res = await fetch(API_URL_PRODUCTS, { method: 'POST', headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         if (!res.ok) throw new Error(await res.text());
-        alert('上传成功！');
-        sellModal.classList.remove('active');
-        await loadProducts();
+        alert('上传成功！'); sellModal.classList.remove('active'); await loadProducts();
       } catch (err) {
-        console.error(err);
-        sellError.textContent = '上传失败：' + err.message;
-        sellError.style.display = 'block';
-      } finally {
-        submitSellBtn.disabled = false; submitSellBtn.textContent = '提交';
-      }
+        console.error(err); sellError.textContent = '上传失败：' + err.message; sellError.style.display = 'block';
+      } finally { submitSellBtn.disabled = false; submitSellBtn.textContent = '提交'; }
     });
 
-    // ===== 商品加载（从 products.json）=====
+    // ===== 商品加载（从 products.json） =====
     async function loadProducts() {
       try {
         const res = await fetch('products.json?t=' + Date.now());
         if (!res.ok) throw new Error('加载失败');
         products = await res.json();
-        products.forEach(p => {
-          if (!p.images || p.images.length === 0) p.images = ['https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片'];
-        });
+        products.forEach(p => { if (!p.images || p.images.length === 0) p.images = ['https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片']; });
         renderHome();
         if (window.location.hash) handleHashChange();
         else window.location.hash = '#/';
@@ -684,14 +602,10 @@
       }
     }
 
-    const homePage = document.getElementById('homePage');
-    const detailPage = document.getElementById('detailPage');
-    const productGrid = document.getElementById('productGrid');
-    const totalCountSpan = document.getElementById('totalCount');
-    const searchInput = document.getElementById('searchInput');
-    const detailContent = document.getElementById('detailContent');
-    const backBtn = document.getElementById('backBtn');
-
+    // ===== 页面渲染 =====
+    const homePage = document.getElementById('homePage'), detailPage = document.getElementById('detailPage');
+    const productGrid = document.getElementById('productGrid'), totalCountSpan = document.getElementById('totalCount');
+    const searchInput = document.getElementById('searchInput'), detailContent = document.getElementById('detailContent'), backBtn = document.getElementById('backBtn');
     function truncate(str, len=30) { return str && str.length > len ? str.slice(0,len)+'...' : str||''; }
     let currentRoute = 'home', currentProductId = null;
 
@@ -703,21 +617,17 @@
       productGrid.innerHTML = filtered.map(p => {
         const displayId = (p.id || '00').toString().padStart(2, '0');
         const isSold = p.status === '已出售';
-        return `
-          <div class="product-card ${isSold ? 'sold' : ''}" data-product-id="${p.id}">
-            ${isSold ? '<div class="sold-overlay">已出售</div>' : ''}
-            <div class="card-img">
-              <img src="${p.images[0]}" alt="${displayId}" loading="lazy" onerror="this.src='https://placehold.co/700x420/1a1f2b/f0c060?text=加载失败';">
-            </div>
-            <div class="card-body">
-              <div class="product-id">📌 ${displayId}</div>
-              <div class="product-title">${truncate(p.title)}</div>
-              <div class="product-desc">${truncate(p.desc)}</div>
-              <div class="product-server">🌐 ${p.server}</div>
-              <div class="product-footer"><span class="price">¥${p.price}</span><button class="btn-sm">查看详情</button></div>
-            </div>
+        return `<div class="product-card ${isSold ? 'sold' : ''}" data-product-id="${p.id}">
+          ${isSold ? '<div class="sold-overlay">已出售</div>' : ''}
+          <div class="card-img"><img src="${p.images[0]}" alt="${displayId}" loading="lazy" onerror="this.src='https://placehold.co/700x420/1a1f2b/f0c060?text=加载失败';"></div>
+          <div class="card-body">
+            <div class="product-id">📌 ${displayId}</div>
+            <div class="product-title">${truncate(p.title)}</div>
+            <div class="product-desc">${truncate(p.desc)}</div>
+            <div class="product-server">🌐 ${p.server}</div>
+            <div class="product-footer"><span class="price">¥${p.price}</span><button class="btn-sm">查看详情</button></div>
           </div>
-        `;
+        </div>`;
       }).join('');
       document.querySelectorAll('.product-card').forEach(c => c.addEventListener('click', () => navigateToDetail(c.dataset.productId)));
     }
@@ -732,7 +642,6 @@
       const currentBid = p.highestBid || 0;
       const bidDisplay = currentBid > 0 ? `¥${currentBid}` : '暂无出价';
       const displayId = (p.id || '').toString().padStart(2, '0');
-
       detailContent.innerHTML = `
         <div class="detail-gallery">
           <img src="${mainImg}" class="main-img" id="mainImg" alt="${displayId}" onerror="this.src='https://placehold.co/700x420/1a1f2b/f0c060?text=加载失败';">
@@ -756,9 +665,7 @@
           </div>
           <button class="buy-btn" id="buyBtn">💬 联系客服购买</button>
           <div class="contact-row"><span>📱 客服微信：csy212886226</span></div>
-        </div>
-      `;
-
+        </div>`;
       const thumbElements = document.querySelectorAll('#thumbList .thumb');
       thumbElements.forEach(thumb => {
         thumb.addEventListener('click', function() {
@@ -770,22 +677,14 @@
           }
         });
       });
-
       document.getElementById('mainImg').addEventListener('click', () => {
         document.getElementById('lightboxImg').src = document.getElementById('mainImg').src;
         document.getElementById('lightbox').classList.add('active');
       });
-      document.getElementById('lightbox').addEventListener('click', () => {
-        document.getElementById('lightbox').classList.remove('active');
-      });
-
+      document.getElementById('lightbox').addEventListener('click', () => { document.getElementById('lightbox').classList.remove('active'); });
       document.getElementById('buyBtn').addEventListener('click', () => alert('请联系客服微信：csy212886226 完成购买'));
 
-      const bidInput = document.getElementById('bidInput');
-      const submitBtn = document.getElementById('submitBidBtn');
-      const errorEl = document.getElementById('bidError');
-      const currentBidSpan = document.getElementById('currentBid');
-
+      const bidInput = document.getElementById('bidInput'), submitBtn = document.getElementById('submitBidBtn'), errorEl = document.getElementById('bidError'), currentBidSpan = document.getElementById('currentBid');
       submitBtn.addEventListener('click', async () => {
         if (!currentUser) { errorEl.textContent = '请先登录后才能出价'; errorEl.style.display = 'block'; return; }
         const bidValue = parseFloat(bidInput.value);
@@ -795,21 +694,11 @@
         submitBtn.disabled = true; submitBtn.textContent = '提交中...'; errorEl.style.display = 'none';
         try {
           const patchUrl = `https://api.airtable.com/v0/${AIRTABLE_CONFIG.baseId}/${encodeURIComponent(TABLE_PRODUCTS)}/${p.recordId}`;
-          const res = await fetch(patchUrl, {
-            method: 'PATCH',
-            headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fields: { '最高出价': bidValue } })
-          });
+          const res = await fetch(patchUrl, { method: 'PATCH', headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: { '最高出价': bidValue } }) });
           if (!res.ok) throw new Error('出价失败');
-          p.highestBid = bidValue;
-          currentBidSpan.textContent = `¥${bidValue}`;
-          bidInput.value = '';
-          alert('出价成功！');
-        } catch (err) {
-          errorEl.textContent = '出价失败，请稍后重试'; errorEl.style.display = 'block';
-        } finally {
-          submitBtn.disabled = false; submitBtn.textContent = '我要出价';
-        }
+          p.highestBid = bidValue; currentBidSpan.textContent = `¥${bidValue}`; bidInput.value = ''; alert('出价成功！');
+        } catch (err) { errorEl.textContent = '出价失败，请稍后重试'; errorEl.style.display = 'block'; }
+        finally { submitBtn.disabled = false; submitBtn.textContent = '我要出价'; }
       });
     }
 
@@ -817,24 +706,15 @@
     function navigateToDetail(pid) { currentRoute='detail'; currentProductId=pid; homePage.classList.remove('active'); detailPage.classList.add('active'); window.location.hash=`#/detail/${pid}`; renderDetail(pid); window.scrollTo({ top:0, behavior:'smooth' }); }
     searchInput.addEventListener('input', e => { if (currentRoute==='home') renderHome(e.target.value); });
     backBtn.addEventListener('click', navigateToHome);
-
     function handleHashChange() {
       const m = window.location.hash.match(/^#\/detail\/(.+)/);
       if (m) {
         const pid=m[1];
         if (products.some(p => p.id===pid)) {
-          if (currentRoute!=='detail'||currentProductId!==pid) {
-            homePage.classList.remove('active'); detailPage.classList.add('active');
-            renderDetail(pid);
-            currentRoute='detail'; currentProductId=pid;
-          }
+          if (currentRoute!=='detail'||currentProductId!==pid) { homePage.classList.remove('active'); detailPage.classList.add('active'); renderDetail(pid); currentRoute='detail'; currentProductId=pid; }
         } else navigateToHome();
       } else {
-        if (currentRoute!=='home') {
-          homePage.classList.add('active'); detailPage.classList.remove('active');
-          renderHome(searchInput.value);
-          currentRoute='home'; currentProductId=null;
-        }
+        if (currentRoute!=='home') { homePage.classList.add('active'); detailPage.classList.remove('active'); renderHome(searchInput.value); currentRoute='home'; currentProductId=null; }
       }
     }
     window.addEventListener('hashchange', handleHashChange);
@@ -842,21 +722,17 @@
     function createSakura() {
       const container = document.getElementById('sakuraBg');
       for (let i = 0; i < 15; i++) {
-        const sakura = document.createElement('div');
-        sakura.classList.add('sakura');
+        const sakura = document.createElement('div'); sakura.classList.add('sakura');
         sakura.style.left = Math.random() * 100 + '%';
         sakura.style.animationDuration = Math.random() * 5 + 8 + 's';
         sakura.style.animationDelay = Math.random() * 5 + 's';
         sakura.style.fontSize = Math.random() * 16 + 12 + 'px';
         sakura.style.opacity = Math.random() * 0.3 + 0.2;
-        sakura.textContent = '🌸';
-        container.appendChild(sakura);
+        sakura.textContent = '🌸'; container.appendChild(sakura);
       }
     }
 
-    updateUIBasedOnUser();
-    loadProducts();
-    createSakura();
+    updateUIBasedOnUser(); loadProducts(); createSakura();
   </script>
 </body>
 </html>
