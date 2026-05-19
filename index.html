@@ -577,7 +577,7 @@
       });
     });
 
-    submitSellBtn.addEventListener('click', async () => {
+      submitSellBtn.addEventListener('click', async () => {
       if (!currentUser) { sellError.textContent = '请先登录'; sellError.style.display = 'block'; return; }
       const id = sellId.value.trim(); const title = sellTitle.value.trim(); const desc = sellDesc.value.trim();
       const price = parseFloat(sellPrice.value); const server = sellServer.value.trim();
@@ -587,6 +587,7 @@
       }
       sellError.style.display = 'none'; submitSellBtn.disabled = true; submitSellBtn.textContent = '上传中...';
       try {
+        // 上传图片
         const mainUrl = await uploadToCOS(mainFile);
         const otherFiles = sellOtherImgs.files;
         const otherUrls = [];
@@ -595,6 +596,8 @@
           const url = await uploadToCOS(otherFiles[i]);
           otherUrls.push(url);
         }
+        
+        // 写入 Airtable
         const fields = {
           '编号': id, '标题': title, '描述': desc, '价格': price, '区服': server,
           '上传者': currentUser, '最高出价': 0, '主图URL': mainUrl, '其他图片URL': otherUrls.join(','), '状态': '未出售'
@@ -602,34 +605,34 @@
         const body = { records: [{ fields }] };
         const res = await fetch(API_URL_PRODUCTS, { method: 'POST', headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         if (!res.ok) throw new Error(await res.text());
-        alert('上传成功！'); sellModal.classList.remove('active'); await loadProducts();
-      } catch (err) {
-        console.error(err); sellError.textContent = '上传失败：' + err.message; sellError.style.display = 'block';
-      } finally { submitSellBtn.disabled = false; submitSellBtn.textContent = '提交'; }
-    });
 
-    // ===== 商品加载（从 products.json） =====
-    async function loadProducts() {
-      try {
-        const res = await fetch('products.json?t=' + Date.now());
-        if (!res.ok) throw new Error('加载失败');
-        products = await res.json();
-        products.forEach(p => { if (!p.images || p.images.length === 0) p.images = ['https://placehold.co/700x420/1a1f2b/f0c060?text=暂无图片']; });
-        renderHome();
-        if (window.location.hash) handleHashChange();
-        else window.location.hash = '#/';
+        // ===== 上传成功后的处理 =====
+        sellModal.classList.remove('active');
+        alert('商品已提交，系统将在约 1 分钟内自动更新商品列表，请稍后刷新页面。');
+
+        // 触发 GitHub Actions 重新生成 products.json
+        try {
+          await fetch('https://api.github.com/repos/zhuran-5879/zhuran-5879.github.io/dispatches', {
+            method: 'POST',
+            headers: {
+              'Authorization': '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',  // ⚠️ 替换成你生成的真实 Token
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ event_type: 'update-products' })
+          });
+        } catch (triggerErr) {
+          console.error('触发更新失败（不影响上传）:', triggerErr);
+        }
+
       } catch (err) {
         console.error(err);
-        document.getElementById('productGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6b7280;">数据加载失败，请稍后重试</div>';
+        sellError.textContent = '上传失败：' + err.message;
+        sellError.style.display = 'block';
+      } finally {
+        submitSellBtn.disabled = false;
+        submitSellBtn.textContent = '提交';
       }
-    }
-
-    // ===== 页面渲染 =====
-    const homePage = document.getElementById('homePage'), detailPage = document.getElementById('detailPage');
-    const productGrid = document.getElementById('productGrid'), totalCountSpan = document.getElementById('totalCount');
-    const searchInput = document.getElementById('searchInput'), detailContent = document.getElementById('detailContent'), backBtn = document.getElementById('backBtn');
-    function truncate(str, len=30) { return str && str.length > len ? str.slice(0,len)+'...' : str||''; }
-    let currentRoute = 'home', currentProductId = null;
+    });
 
     function renderHome(filterText='') {
       const kw = filterText.trim().toLowerCase();
