@@ -68,8 +68,26 @@
     .buy-btn { width:100%; background:linear-gradient(135deg, #d4942b, #b5761e); border:none; color:#0c0f15; font-weight:800; font-size:1.2rem; padding:14px; border-radius:40px; cursor:pointer; transition:opacity 0.2s; }
     .buy-btn:hover { opacity:0.9; }
     .contact-row { display:flex; align-items:center; gap:16px; margin-top:16px; color:#9aa0b0; }
-    .float-sell-btn { position:fixed; bottom:30px; right:30px; background:linear-gradient(135deg, #d4942b, #b5761e); color:#0c0f15; font-weight:800; font-size:1.1rem; padding:14px 24px; border-radius:50px; box-shadow:0 8px 25px rgba(212,148,43,0.4); cursor:pointer; z-index:1000; border:none; }
-    .float-sell-btn:hover { transform:scale(1.05); }
+    .float-sell-btn {
+  position: fixed;
+  bottom: 30px; right: 30px;
+  background: linear-gradient(135deg, #f0c060, #d4942b);
+  color: #0c0f15;
+  font-weight: 800;
+  font-size: 1.1rem;
+  padding: 14px 24px;
+  border-radius: 50px;
+  box-shadow: 0 8px 25px rgba(212,148,43,0.4);
+  cursor: pointer;
+  z-index: 1000;
+  border: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+  letter-spacing: 1px;
+}
+.float-sell-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 30px rgba(212,148,43,0.6);
+}
     .footer { text-align:center; padding:32px 20px; color:#5a6270; font-size:0.85rem; border-top:1px solid #1e2530; }
     .user-menu { display:flex; align-items:center; gap:10px; }
     .user-menu .user-avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid #d4942b; cursor:pointer; }
@@ -191,11 +209,11 @@
     <div class="modal">
       <button class="close-btn" id="closeSellModal">✕</button>
       <h2>上传新账号</h2>
-      <input type="text" id="sellId" placeholder="编号 (如 03)">
-      <input type="text" id="sellTitle" placeholder="标题">
-      <textarea id="sellDesc" placeholder="详细描述" rows="3"></textarea>
-      <input type="number" id="sellPrice" placeholder="价格" step="0.01">
-      <input type="text" id="sellServer" placeholder="所在区服">
+      <input type="text" id="sellId" placeholder="编号（如03，数字即可）">
+      <input type="text" id="sellTitle" placeholder="标题（简短描述账号亮点）">
+      <textarea id="sellDesc" placeholder="详细描述（皮肤、等级、资源等，别加无意义符号）" rows="3"></textarea>
+      <input type="number" id="sellPrice" placeholder="价格（只填数字，如 1288）" step="0.01">
+      <input type="text" id="sellServer" placeholder="所在区服（如 281）">
       <label style="color:#9aa0b0; font-size:0.9rem;">主图（必选）</label>
       <input type="file" id="sellMainImg" accept="image/*">
       <div class="img-upload-preview" id="mainImgPreview"></div>
@@ -392,7 +410,10 @@
         if (record.fields['密码'] !== await hashPassword(password)) {
           authError.textContent = '密码错误'; authError.style.display = 'block'; return;
         }
-        currentUser = account; authModal.classList.remove('active'); await updateUIBasedOnUser();
+        currentUser = account;
+sessionStorage.setItem('zhuran_user', account);  // ← 新增这行
+authModal.classList.remove('active');
+await updateUIBasedOnUser();
       } else if (authMode === 'register') {
         const password = authPassword.value, confirmPassword = authConfirmPassword.value;
         if (!password || password.length < 6) { authError.textContent = '密码至少6位'; authError.style.display = 'block'; return; }
@@ -406,7 +427,10 @@
         const body = { records: [{ fields: { '用户名': account, '密码': await hashPassword(password), '密保问题': question, '密保答案': await hashAnswer(answer), '昵称': account, '头像base64': '' } }] };
         const res = await fetch(API_URL_USERS, { method: 'POST', headers: { 'Authorization': `Bearer ${AIRTABLE_CONFIG.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         if (!res.ok) { authError.textContent = '注册失败'; authError.style.display = 'block'; return; }
-        currentUser = account; authModal.classList.remove('active'); await updateUIBasedOnUser();
+        currentUser = account;
+sessionStorage.setItem('zhuran_user', account);  // ← 新增这行
+authModal.classList.remove('active');
+await updateUIBasedOnUser();
       } else if (authMode === 'forgot') {
         if (!forgotUsername) {
           const record = await findUser(account);
@@ -444,7 +468,7 @@
       }
     });
 
-    logoutBtn.addEventListener('click', () => { currentUser = null; currentUserRecord = null; updateUIBasedOnUser(); });
+    logoutBtn.addEventListener('click', () => { currentUser = null; currentUserRecord = null;sessionStorage.removeItem('zhuran_user');updateUIBasedOnUser(); });
 
     // ===== 个人资料 & 我的商品 =====
     const profileModal = document.getElementById('profileModal');
@@ -781,9 +805,17 @@
     }
 
     // 启动
-    updateUIBasedOnUser();
+      // ===== 恢复登录状态 =====
+  (async function restoreSession() {
+    const savedUser = sessionStorage.getItem('zhuran_user');
+    if (savedUser) {
+      currentUser = savedUser;
+      await updateUIBasedOnUser();
+    }
+  })().then(() => {
     loadProducts();
     createSakura();
+  });
   </script>
 
   <!-- 首次访问公告弹窗 -->
@@ -804,24 +836,23 @@
   </div>
 
     <script>
-    // 首次访问弹窗
-    (function() {
-      const noticeModal = document.getElementById('noticeModal');
-      const closeNoticeModal = document.getElementById('closeNoticeModal');
-      const confirmNoticeBtn = document.getElementById('confirmNoticeBtn');
+  (function() {
+    const noticeModal = document.getElementById('noticeModal');
+    const closeNoticeModal = document.getElementById('closeNoticeModal');
+    const confirmNoticeBtn = document.getElementById('confirmNoticeBtn');
 
-      if (!localStorage.getItem('zhuran_notice_read')) {
-        noticeModal.classList.add('active');
-      }
+    if (!sessionStorage.getItem('zhuran_notice_shown')) {
+      noticeModal.classList.add('active');
+    }
 
-      function closeNotice() {
-        noticeModal.classList.remove('active');
-        localStorage.setItem('zhuran_notice_read', 'true');
-      }
+    function closeNotice() {
+      noticeModal.classList.remove('active');
+      sessionStorage.setItem('zhuran_notice_shown', 'true');
+    }
 
-      closeNoticeModal.addEventListener('click', closeNotice);  // 补齐了括号
-      confirmNoticeBtn.addEventListener('click', closeNotice);
-    })();
-  </script>
+    closeNoticeModal.addEventListener('click', closeNotice);
+    confirmNoticeBtn.addEventListener('click', closeNotice);
+  })();
+</script>
 </body>
 </html>
