@@ -103,6 +103,14 @@
   </style>
 </head>
 <body>
+  <script>
+  if (navigator.userAgent.match(/MicroMessenger/i)) {
+    document.body.innerHTML = `<div style="color:#f0c060;text-align:center;padding:40px;font-size:1.2rem;">
+      ⚠️ 微信内无法直接访问，请点击右上角「···」→「在浏览器打开」
+    </div>`;
+    throw new Error('微信停止加载');
+  }
+</script>
   <audio id="bgMusic" loop preload="auto" style="display:none;">
     <source src="https://files.catbox.moe/oyp5ra.mp3" type="audio/mpeg">
   </audio>
